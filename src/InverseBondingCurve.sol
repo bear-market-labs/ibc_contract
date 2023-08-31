@@ -81,6 +81,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
 
     function addLiquidity() external payable onlyInitialized{
         require(msg.value > MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
+
         uint256 currentIbcSupply = _inverseToken.totalSupply();
         uint256 currentPrice = getPrice(currentIbcSupply);
         uint256 currentBalance = address(this).balance;
@@ -91,11 +92,60 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
         _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
     }
 
-    function removeLiquidity(uint256 lpTokenAmount) external onlyInitialized {}
+    function removeLiquidity(uint256 lpTokenAmount) external onlyInitialized {
+        require(balanceOf(msg.sender) >= lpTokenAmount, ERR_INSUFFICIENT_BALANCE);
 
-    function buyToken() external payable onlyInitialized {}
+        uint256 currentIbcSupply = _inverseToken.totalSupply();
+        uint256 currentPrice = getPrice(currentIbcSupply);
+        uint256 currentBalance = address(this).balance;
+        uint256 returnLiquidity = lpTokenAmount.mulDown(currentBalance).divDown(totalSupply());
 
-    function sellToken(uint256 amount) external onlyInitialized {}
+        _burn(msg.sender, lpTokenAmount);
+        (bool sent, ) = msg.sender.call{value: returnLiquidity}("");
+        require(sent, "Failed to send Ether");
+
+        currentBalance = address(this).balance;
+        _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(currentBalance));
+        require(_parameterK < 1, ERR_PARAM_UPDATE_FAIL);
+        _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
+    }
+
+
+    function buyToken() external payable onlyInitialized {
+        uint256 newSupply = getSupplyFromLiquidity(address(this).balance);
+        uint256 mintToken = newSupply - _inverseToken.totalSupply();
+
+        _inverseToken.mint(msg.sender, mintToken);
+    }
+
+
+    function sellToken(uint256 amount) external onlyInitialized {
+        require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
+
+        _inverseToken.burnFrom(msg.sender, amount);
+
+        uint256 newLiquidity = getLiquidityFromSupply(_inverseToken.totalSupply());
+        uint returnLiquidity = address(this).balance - newLiquidity;
+
+        (bool sent, ) = msg.sender.call{value: returnLiquidity}("");
+        require(sent, "Failed to send Ether");
+    }
+
+
+        def sell_token(self, tokenAmount):
+        burned_token_amount = tokenAmount * (1 - self.FEE_PERCENT)
+        self.fee_token += tokenAmount * self.FEE_PERCENT
+        
+        new_liquidity = self.get_liquidity_from_supply(self.current_supply - burned_token_amount)
+        returned_liquidity = self.current_liquidity - new_liquidity
+        
+        assert ((self.current_supply - burned_token_amount) >= self.MIN_SUPPLY and new_liquidity >= self.MIN_LIQUIDITY), \
+            f"There must be at least {self.MIN_LIQUIDITY} left in reserve liquidity and {self.MIN_SUPPLY} left in supply"
+        
+        self.current_supply -= burned_token_amount
+        self.current_liquidity = new_liquidity
+        
+        return returned_liquidity
 
     function getPrice(uint256 supply) public view onlyInitialized returns(uint256) {
         return _parameterM.divDown(supply.pow(_parameterK));

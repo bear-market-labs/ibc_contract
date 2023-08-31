@@ -10,3 +10,5 @@ string constant ERR_PARAM_ZERO = "Parameter can't be zero";
 
 string constant ERR_PARAM_UPDATE_FAIL = "Parameter update fail because of invalid curve";
 
+string constant ERR_INSUFFICIENT_BALANCE = "Insufficient balance";
+
