@@ -2,13 +2,12 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/InverseBondingCurveToken.sol";
+import "../src/InverseBondingCurve.sol";
 
 contract CounterTest is Test {
-    InverseBondingCurveToken public token;
+    InverseBondingCurve public curveContract;
 
     function setUp() public {
-        token = new InverseBondingCurveToken();
-
+        curveContract = new InverseBondingCurve();
     }
 }
