@@ -15,6 +15,7 @@ import "./lib/balancer/FixedPoint.sol";
 import "./Constants.sol";
 import "./Errors.sol";
 
+
 contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
     using FixedPoint for uint256;
     using SignedMath for int256;
@@ -65,6 +66,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
     uint256 private _parameterM;
     bool private _isInitialized;
     uint256 private _globalIndex;
+    uint256 private _feePercent; 
 
     InverseBondingCurveToken private immutable _inverseToken;
     mapping(address => uint256) private _userState;
@@ -89,6 +91,13 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
             "IBC",
             "IBC"
         );
+
+        _feePercent = FEE_PERCENT;
+    }
+
+    function setupFeePercent(uint256 feePercent) external onlyOwner {
+        require(feePercent > 1e14 && feePercent < 5e17, ERR_FEE_PERCENT_OUT_OF_RANGE);
+        _feePercent = feePercent;
     }
 
     function initialize(uint256 supply, uint256 price) external payable onlyOwner {
@@ -121,7 +130,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         require(currentPrice >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT); 
 
         uint256 currentBalance = address(this).balance;
-        uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance);
+        uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance.sub(msg.value));
 
         _updateReward(recipient);
         _mint(recipient, mintToken);
@@ -163,7 +172,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
 
         uint256 newSupply = getSupplyFromLiquidity(address(this).balance);
         uint256 newToken = newSupply - _inverseToken.totalSupply();
-        uint256 fee = newToken.mulDown(FEE_PERCENT);
+        uint256 fee = newToken.mulDown(_feePercent);
         uint256 mintToken = newToken.sub(fee);
         require(msg.value.divDown(mintToken) <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
@@ -180,7 +189,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         require(amount >= MIN_SUPPLY, ERR_LIQUIDITY_TOO_SMALL);
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
-        uint256 fee = amount.mulDown(FEE_PERCENT);
+        uint256 fee = amount.mulDown(_feePercent);
         uint256 burnToken = amount.sub(fee);
         uint256 newLiquidity = getLiquidityFromSupply(_inverseToken.totalSupply().sub(burnToken));
         uint returnLiquidity = address(this).balance - newLiquidity;
@@ -205,8 +214,8 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         if(_userPendingReward[msg.sender] > 0){
             uint256 amount = _userPendingReward[msg.sender];
             _userPendingReward[msg.sender] = 0;
-            _userState[msg.sender] = 0;
-            _inverseToken.transferFrom(address(this), recipient, amount);
+            // _userState[msg.sender] = 0;
+            _inverseToken.transfer(recipient, amount);
 
             emit RewardClaimed(msg.sender, recipient, amount);
         }
@@ -226,19 +235,35 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         return liquidity.mulDown(oneMinusK).divDown(_parameterM).powDown(ONE_UINT.divDown(oneMinusK));
     }
 
-    function getInverseTokenAddress() external view onlyInitialized returns(address){
+    function getInverseTokenAddress() external view returns(address){
         return address(_inverseToken);
     }
 
-    function getCurveParameters() external view onlyInitialized returns(int256 parameterK, uint256 parameterM){
+    function getCurveParameters() external view returns(int256 parameterK, uint256 parameterM){
         return(_parameterK, _parameterM);
+    }
+
+    function getFeePercent() external view returns(uint256){
+        return _feePercent;
+    }
+
+    function getReward(address recipient) external view returns(uint256){
+        uint256 reward = 0;
+        uint256 userLpBalance = balanceOf(recipient);
+        if(userLpBalance > 0){
+            reward = _userPendingReward[recipient] + _globalIndex.sub(_userState[recipient]).mulDown(userLpBalance);
+        }
+        return reward;
     }
 
     function _updateReward(address user) private onlyInitialized() {
         uint256 userLpBalance = balanceOf(user);
         if(userLpBalance > 0){
-            uint256 reward = _globalIndex.sub(_userState[user]).mulDown(userLpBalance) ;
+            uint256 reward = _globalIndex.sub(_userState[user]).mulDown(userLpBalance);
             _userPendingReward[user] += reward;
+            _userState[user] = _globalIndex;
+        }else{
+            _userPendingReward[user] = 0;
             _userState[user] = _globalIndex;
         }
     }

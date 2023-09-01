@@ -17,4 +17,6 @@ interface IInverseBondingCurve {
     function getInverseTokenAddress() external view returns(address);
 
     function getCurveParameters() external view returns(int256 parameterK, uint256 parameterM);
+
+    function getReward(address recipient) external view returns(uint256);
 }
