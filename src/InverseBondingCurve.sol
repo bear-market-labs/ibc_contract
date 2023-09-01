@@ -64,12 +64,12 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
     }
 
     function initialize(uint256 supply, uint256 price) external payable {
-        require(msg.value > 1 ether, ERR_LIQUIDITY_TOO_SMALL);
+        require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
         require(supply > 0 && price > 0, ERR_PARAM_ZERO);
         _isInitialized = true;
 
         _parameterK = ONE_INT - int256(supply.mulDown(price).divDown(msg.value));
-        require(_parameterK < 1, ERR_PARAM_UPDATE_FAIL);
+        require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
         _parameterM = price.mulDown(supply.pow(_parameterK));
 
         // mint LP token
@@ -88,7 +88,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
         uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance);
         _mint(msg.sender, mintToken);
         _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(currentBalance));
-        require(_parameterK < 1, ERR_PARAM_UPDATE_FAIL);
+        require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
         _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
     }
 
@@ -106,7 +106,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
 
         currentBalance = address(this).balance;
         _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(currentBalance));
-        require(_parameterK < 1, ERR_PARAM_UPDATE_FAIL);
+        require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
         _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
     }
 
@@ -130,23 +130,6 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
         (bool sent, ) = msg.sender.call{value: returnLiquidity}("");
         require(sent, "Failed to send Ether");
     }
-
-
-        def sell_token(self, tokenAmount):
-        burned_token_amount = tokenAmount * (1 - self.FEE_PERCENT)
-        self.fee_token += tokenAmount * self.FEE_PERCENT
-        
-        new_liquidity = self.get_liquidity_from_supply(self.current_supply - burned_token_amount)
-        returned_liquidity = self.current_liquidity - new_liquidity
-        
-        assert ((self.current_supply - burned_token_amount) >= self.MIN_SUPPLY and new_liquidity >= self.MIN_LIQUIDITY), \
-            f"There must be at least {self.MIN_LIQUIDITY} left in reserve liquidity and {self.MIN_SUPPLY} left in supply"
-        
-        self.current_supply -= burned_token_amount
-        self.current_liquidity = new_liquidity
-        
-        return returned_liquidity
-
     function getPrice(uint256 supply) public view onlyInitialized returns(uint256) {
         return _parameterM.divDown(supply.pow(_parameterK));
     }

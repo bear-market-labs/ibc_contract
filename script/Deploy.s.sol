@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import "../src/InverseBondingCurveToken.sol";
+import "../src/InverseBondingCurve.sol";
 
 contract DeploymentScript is Script {
     function setUp() public {}
@@ -13,7 +13,11 @@ contract DeploymentScript is Script {
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
         vm.startBroadcast(privateKey);
 
-        InverseBondingCurveToken pool = new InverseBondingCurveToken();
+        InverseBondingCurve curveContract = new InverseBondingCurve();
+
+        uint256 supply = 1e18;
+        uint256 price = 1e18;
+        curveContract.initialize{value: 2 ether}(supply, price);
 
         vm.stopBroadcast();
     }
