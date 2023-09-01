@@ -12,3 +12,7 @@ string constant ERR_PARAM_UPDATE_FAIL = "Parameter update fail because of invali
 
 string constant ERR_INSUFFICIENT_BALANCE = "Insufficient balance";
 
+string constant ERR_EMPTY_ADDRESS = "Empty address";
+
+string constant ERR_PRICE_OUT_OF_LIMIT = "Price out of limit";
+

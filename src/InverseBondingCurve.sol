@@ -7,6 +7,7 @@ import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/utils/Strings.sol";
 import "openzeppelin/utils/math/SignedMath.sol";
 import "openzeppelin/security/ReentrancyGuard.sol";
+import "openzeppelin/access/Ownable.sol";
 
 import "./interface/IInverseBondingCurve.sol";
 import "./InverseBondingCurveToken.sol";
@@ -14,7 +15,7 @@ import "./lib/balancer/FixedPoint.sol";
 import "./Constants.sol";
 import "./Errors.sol";
 
-contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
+contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
     using FixedPoint for uint256;
     using SignedMath for int256;
     using SafeERC20 for IERC20;
@@ -22,25 +23,52 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
 
     /// EVENTS ///
 
-    event LiquidityAdd(
-        uint256 reserveIn,
-        uint256 liquidityTokenAmount,
-        uint256 newParameterM,
-        int256 newParameterK
+    event LiquidityAdded(
+        address indexed from,
+        address indexed recipient,
+        uint256 amountIn,
+        uint256 amountOut,        
+        int256 newParameterK,
+        uint256 newParameterM
     );
-    event LiquidityRemove(
-        uint256 liquidityTokenIn,
-        uint256 reserveOut,
-        uint256 newParameterM,
-        int256 newParameterK
+    event LiquidityRemoved(
+        address indexed from,
+        address indexed recipient,
+        uint256 amountIn,
+        uint256 amountOut, 
+        int256 newParameterK,
+        uint256 newParameterM
+    );
+
+    event TokenBought(
+        address indexed from,
+        address indexed recipient,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
+    event TokenSold(
+        address indexed from,
+        address indexed recipient,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
+    event RewardClaimed(
+        address indexed from,
+        address indexed recipient,
+        uint256 amount
     );
 
     /// STATE VARIABLES ///
     int256 private _parameterK;
     uint256 private _parameterM;
     bool private _isInitialized;
+    uint256 private _globalIndex;
 
     InverseBondingCurveToken private immutable _inverseToken;
+    mapping(address => uint256) private _userState;
+    mapping(address => uint256) private _userPendingReward;
 
     /// MODIFIERS ///
 
@@ -63,72 +91,125 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
         );
     }
 
-    function initialize(uint256 supply, uint256 price) external payable {
+    function initialize(uint256 supply, uint256 price) external payable onlyOwner {
         require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
         require(supply > 0 && price > 0, ERR_PARAM_ZERO);
         _isInitialized = true;
+
 
         _parameterK = ONE_INT - int256(supply.mulDown(price).divDown(msg.value));
         require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
         _parameterM = price.mulDown(supply.pow(_parameterK));
 
+        _updateReward(msg.sender);
         // mint LP token
         _mint(msg.sender, msg.value);
         // mint IBC token
         _inverseToken.mint(msg.sender, supply);
+
+        emit LiquidityAdded(msg.sender, msg.sender, msg.value, supply, _parameterK, _parameterM);
     }
 
 
-    function addLiquidity() external payable onlyInitialized{
+    function addLiquidity(address recipient, uint256 minPriceLimit) external payable onlyInitialized{
         require(msg.value > MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
+        require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
+        
         uint256 currentIbcSupply = _inverseToken.totalSupply();
         uint256 currentPrice = getPrice(currentIbcSupply);
+        require(currentPrice >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT); 
+
         uint256 currentBalance = address(this).balance;
         uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance);
-        _mint(msg.sender, mintToken);
+
+        _updateReward(recipient);
+        _mint(recipient, mintToken);
         _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(currentBalance));
         require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
         _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
+
+        emit LiquidityAdded(msg.sender, recipient, msg.value, mintToken, _parameterK, _parameterM);
     }
 
-    function removeLiquidity(uint256 lpTokenAmount) external onlyInitialized {
-        require(balanceOf(msg.sender) >= lpTokenAmount, ERR_INSUFFICIENT_BALANCE);
+    function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external onlyInitialized {
+        require(balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
+        require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
         uint256 currentIbcSupply = _inverseToken.totalSupply();
         uint256 currentPrice = getPrice(currentIbcSupply);
+        require(currentPrice <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT); 
+        
         uint256 currentBalance = address(this).balance;
-        uint256 returnLiquidity = lpTokenAmount.mulDown(currentBalance).divDown(totalSupply());
+        uint256 returnLiquidity = amount.mulDown(currentBalance).divDown(totalSupply());
 
-        _burn(msg.sender, lpTokenAmount);
-        (bool sent, ) = msg.sender.call{value: returnLiquidity}("");
+        _updateReward(msg.sender);
+        _burn(msg.sender, amount);
+        (bool sent, ) = recipient.call{value: returnLiquidity}("");
         require(sent, "Failed to send Ether");
 
         currentBalance = address(this).balance;
         _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(currentBalance));
         require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
         _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
+
+        emit LiquidityRemoved(msg.sender, recipient, amount, returnLiquidity, _parameterK, _parameterM);
     }
 
 
-    function buyToken() external payable onlyInitialized {
+    function buyTokens(address recipient, uint256 maxPriceLimit) external payable onlyInitialized {
+        require(recipient != address(0), ERR_EMPTY_ADDRESS);
+        require(msg.value > MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
+
         uint256 newSupply = getSupplyFromLiquidity(address(this).balance);
-        uint256 mintToken = newSupply - _inverseToken.totalSupply();
+        uint256 newToken = newSupply - _inverseToken.totalSupply();
+        uint256 fee = newToken.mulDown(FEE_PERCENT);
+        uint256 mintToken = newToken.sub(fee);
+        require(msg.value.divDown(mintToken) <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
-        _inverseToken.mint(msg.sender, mintToken);
+        _globalIndex += fee.divDown(totalSupply());
+        _inverseToken.mint(recipient, mintToken);
+        _inverseToken.mint(address(this), fee);
+
+        emit TokenBought(msg.sender, recipient, msg.value, mintToken);
     }
 
 
-    function sellToken(uint256 amount) external onlyInitialized {
+    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external onlyInitialized {
         require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
+        require(amount >= MIN_SUPPLY, ERR_LIQUIDITY_TOO_SMALL);
+        require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
-        _inverseToken.burnFrom(msg.sender, amount);
-
-        uint256 newLiquidity = getLiquidityFromSupply(_inverseToken.totalSupply());
+        uint256 fee = amount.mulDown(FEE_PERCENT);
+        uint256 burnToken = amount.sub(fee);
+        uint256 newLiquidity = getLiquidityFromSupply(_inverseToken.totalSupply().sub(burnToken));
         uint returnLiquidity = address(this).balance - newLiquidity;
 
-        (bool sent, ) = msg.sender.call{value: returnLiquidity}("");
+        require(returnLiquidity.divDown(burnToken) >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
+
+        // Change state
+        _globalIndex += fee.divDown(totalSupply());
+        _inverseToken.burnFrom(msg.sender, burnToken);
+        _inverseToken.transferFrom(msg.sender, address(this), fee);
+
+        (bool sent, ) = recipient.call{value: returnLiquidity}("");
         require(sent, "Failed to send Ether");
+
+        emit TokenSold(msg.sender, recipient, amount, returnLiquidity);
+    }
+
+    function claimReward(address recipient) external onlyInitialized {
+        require(recipient != address(0), ERR_EMPTY_ADDRESS);
+        _updateReward(msg.sender);
+
+        if(_userPendingReward[msg.sender] > 0){
+            uint256 amount = _userPendingReward[msg.sender];
+            _userPendingReward[msg.sender] = 0;
+            _userState[msg.sender] = 0;
+            _inverseToken.transferFrom(address(this), recipient, amount);
+
+            emit RewardClaimed(msg.sender, recipient, amount);
+        }
     }
     function getPrice(uint256 supply) public view onlyInitialized returns(uint256) {
         return _parameterM.divDown(supply.pow(_parameterK));
@@ -143,6 +224,23 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20 {
         uint256 oneMinusK = uint256(ONE_INT - _parameterK);
 
         return liquidity.mulDown(oneMinusK).divDown(_parameterM).powDown(ONE_UINT.divDown(oneMinusK));
+    }
+
+    function getInverseTokenAddress() external view onlyInitialized returns(address){
+        return address(_inverseToken);
+    }
+
+    function getCurveParameters() external view onlyInitialized returns(int256 parameterK, uint256 parameterM){
+        return(_parameterK, _parameterM);
+    }
+
+    function _updateReward(address user) private onlyInitialized() {
+        uint256 userLpBalance = balanceOf(user);
+        if(userLpBalance > 0){
+            uint256 reward = _globalIndex.sub(_userState[user]).mulDown(userLpBalance) ;
+            _userPendingReward[user] += reward;
+            _userState[user] = _globalIndex;
+        }
     }
 
 }
