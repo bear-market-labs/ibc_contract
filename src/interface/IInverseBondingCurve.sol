@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "../CurveParameter.sol";
+import "../Enums.sol";
 
 interface IInverseBondingCurve {
     function addLiquidity(address recipient, uint256 minPriceLimit) external payable;
@@ -12,7 +13,11 @@ interface IInverseBondingCurve {
 
     function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external;
 
-    function claimReward(address recipient) external;
+    function stake(uint256 amount) external;
+
+    function unstake(uint256 amount) external;
+
+    function claimReward(address recipient, RewardType rewardType) external;
 
     function getPrice(uint256 supply) external view returns(uint256); 
 
@@ -20,5 +25,5 @@ interface IInverseBondingCurve {
 
     function getCurveParameters() external view returns(CurveParameter memory parameters);
 
-    function getReward(address recipient) external view returns(uint256);
+    function getReward(address recipient, RewardType rewardType) external view returns(uint256);
 }
