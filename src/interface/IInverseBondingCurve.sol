@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.13;
 
+import "../CurveParameter.sol";
+
 interface IInverseBondingCurve {
     function addLiquidity(address recipient, uint256 minPriceLimit) external payable;
 
@@ -16,7 +18,7 @@ interface IInverseBondingCurve {
 
     function getInverseTokenAddress() external view returns(address);
 
-    function getCurveParameters() external view returns(int256 parameterK, uint256 parameterM);
+    function getCurveParameters() external view returns(CurveParameter memory parameters);
 
     function getReward(address recipient) external view returns(uint256);
 }

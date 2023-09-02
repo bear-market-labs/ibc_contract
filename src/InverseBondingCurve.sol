@@ -14,6 +14,7 @@ import "./InverseBondingCurveToken.sol";
 import "./lib/balancer/FixedPoint.sol";
 import "./Constants.sol";
 import "./Errors.sol";
+import "./CurveParameter.sol";
 
 
 contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
@@ -239,8 +240,14 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         return address(_inverseToken);
     }
 
-    function getCurveParameters() external view returns(int256 parameterK, uint256 parameterM){
-        return(_parameterK, _parameterM);
+    function getCurveParameters() external view returns(CurveParameter memory parameters){
+        uint256 supply = _inverseToken.totalSupply();
+        return CurveParameter(
+            address(this).balance,
+            supply,
+            getPrice(supply),
+            _parameterK, 
+            _parameterM);
     }
 
     function getFeePercent() external view returns(uint256){

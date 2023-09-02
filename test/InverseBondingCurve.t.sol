@@ -60,14 +60,14 @@ contract InverseBondingCurveTest is Test {
         curveContract.initialize{value: 2 ether}(1e18, 1e18);
 
         uint256 price = curveContract.getPrice(1e18);
-        (int256 k, uint256 m) = curveContract.getCurveParameters();
-        assert(m > 1e18 - ALLOWED_ERROR && m < 1e18 + ALLOWED_ERROR);
+        CurveParameter memory param = curveContract.getCurveParameters();
+        assert(param.parameterM > 1e18 - ALLOWED_ERROR && param.parameterM < 1e18 + ALLOWED_ERROR);
 
         assertEq(price, 1e18);
         assertEq(tokenContract.balanceOf(recipient), 1e18);
         assertEq(curveContract.balanceOf(recipient), 2e18);
         
-        assertEq(k, 5e17);
+        assertEq(param.parameterK, 5e17);
     }
 
     function testAddLiquidity() public {
@@ -78,9 +78,9 @@ contract InverseBondingCurveTest is Test {
         curveContract.addLiquidity{value: 2 ether}(recipient, 1e18);
 
         uint256 price = curveContract.getPrice(1e18);
-        (int256 k, uint256 m) = curveContract.getCurveParameters();
-        assert(m > 1e18 - ALLOWED_ERROR && m < 1e18 + ALLOWED_ERROR);        
-        assert(k > 75e16 - int256(ALLOWED_ERROR) && k < 75e16 + int256(ALLOWED_ERROR));
+        CurveParameter memory param = curveContract.getCurveParameters();
+        assert(param.parameterM > 1e18 - ALLOWED_ERROR && param.parameterM < 1e18 + ALLOWED_ERROR);        
+        assert(param.parameterK > 75e16 - int256(ALLOWED_ERROR) && param.parameterK < 75e16 + int256(ALLOWED_ERROR));
         assertEq(price, 1e18);
 
         assertEq(tokenContract.balanceOf(recipient), 1e18);
@@ -103,9 +103,9 @@ contract InverseBondingCurveTest is Test {
         uint256 balanceAfter = otherRecipient.balance;
 
         uint256 price = curveContract.getPrice(1e18);
-        (int256 k, uint256 m) = curveContract.getCurveParameters();
-        assert(m > 1e18 - ALLOWED_ERROR && m < 1e18 + ALLOWED_ERROR);        
-        assert(k > 5e17 - int256(ALLOWED_ERROR) && k < 5e17 + int256(ALLOWED_ERROR));
+        CurveParameter memory param = curveContract.getCurveParameters();
+        assert(param.parameterM > 1e18 - ALLOWED_ERROR && param.parameterM < 1e18 + ALLOWED_ERROR);        
+        assert(param.parameterK > 5e17 - int256(ALLOWED_ERROR) && param.parameterK < 5e17 + int256(ALLOWED_ERROR));
         assertEq(price, 1e18);
 
         assertEq(tokenContract.balanceOf(recipient), 1e18);

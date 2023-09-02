@@ -404,14 +404,36 @@
       "name": "getCurveParameters",
       "outputs": [
         {
-          "internalType": "int256",
-          "name": "parameterK",
-          "type": "int256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "parameterM",
-          "type": "uint256"
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "reserve",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "supply",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "price",
+              "type": "uint256"
+            },
+            {
+              "internalType": "int256",
+              "name": "parameterK",
+              "type": "int256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "parameterM",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct CurveParameter",
+          "name": "parameters",
+          "type": "tuple"
         }
       ],
       "stateMutability": "view",
