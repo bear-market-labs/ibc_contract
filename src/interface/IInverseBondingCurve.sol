@@ -19,11 +19,13 @@ interface IInverseBondingCurve {
 
     function claimReward(address recipient, RewardType rewardType) external;
 
-    function getPrice(uint256 supply) external view returns(uint256); 
+    function getStakingBalance(address holder) external view returns (uint256);
 
-    function getInverseTokenAddress() external view returns(address);
+    function getPrice(uint256 supply) external view returns (uint256);
 
-    function getCurveParameters() external view returns(CurveParameter memory parameters);
+    function getInverseTokenAddress() external view returns (address);
 
-    function getReward(address recipient, RewardType rewardType) external view returns(uint256);
+    function getCurveParameters() external view returns (CurveParameter memory parameters);
+
+    function getReward(address recipient, RewardType rewardType) external view returns (uint256);
 }

@@ -11,7 +11,7 @@ contract InitializeScript is Script {
         // Put secret in .secret file under contracts folder
         string memory seedPhrase = vm.readFile(".secret");
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
-        address contractAddress = vm.parseAddress("0x37D31345F164Ab170B19bc35225Abc98Ce30b46A");
+        address contractAddress = vm.parseAddress("0x88d1af96098a928ee278f162c1a84f339652f95b");
         vm.startBroadcast(privateKey);
 
         InverseBondingCurve curveContract = InverseBondingCurve(contractAddress);
