@@ -276,6 +276,22 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit RewardClaimed(msg.sender, recipient, RewardType.PROTOCOL, amount);
     }
 
+    function transfer(address recipient, uint256 amount) public override returns (bool){
+        // update the sender/recipient rewards state before balances change
+        _updateLpReward(msg.sender);
+        _updateLpReward(recipient);
+
+        return(super.transfer(recipient, amount));
+    }
+
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool){
+        // update the sender/recipient rewards state before balances change
+        _updateLpReward(from);
+        _updateLpReward(to);
+
+        return(super.transferFrom(from, to, amount));
+    }
+
     function getPrice(uint256 supply) public view onlyInitialized returns (uint256) {
         return _parameterM.divDown(supply.pow(_parameterK));
     }
