@@ -322,6 +322,8 @@ contract InverseBondingCurveTest is Test {
 
         //add liquidity
         curveContract.initialize{value: 2 ether}(1e18, 1e18);
+        assertEq(curveContract.balanceOf(recipient), 2e18);
+        assertEq(curveContract.getReward(recipient, RewardType.LP), 0);
 
         //perform mints to generate lp fees
         curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
@@ -334,29 +336,25 @@ contract InverseBondingCurveTest is Test {
 
         uint256 senderLpReward = curveContract.getReward(recipient, RewardType.LP);
         uint256 recipientLpReward = curveContract.getReward(otherRecipient, RewardType.LP);
-        console2.log("senderLpIndex", senderLpReward);
-        console2.log("recipientLpReward", recipientLpReward);
-        assert(senderLpReward > 0);
+        assertEq(senderLpReward, 1250000000000044);
         assert(recipientLpReward == 0);
         
         //perform more mints to generate lp fees
         curveContract.buyTokens{value: 1 ether}(recipient, 1e18);
 
-        //transfer from otherRecipient to recipient
-        //confrim sender/recipient's reward state
+        //transferfrom otherRecipient to recipient
+        //confirm sender/recipient's reward state
         vm.startPrank(otherRecipient);
-        curveContract.transfer(recipient , 2e18);
-        vm.startPrank(otherRecipient);
+        curveContract.approve(recipient, 10e18);
+        vm.stopPrank();
+
+        vm.startPrank(recipient);
+        curveContract.transferFrom(otherRecipient, recipient , 2e18);
+        vm.stopPrank();
 
         uint256 senderLpReward2 = curveContract.getReward(otherRecipient, RewardType.LP);
         uint256 recipientLpReward2 = curveContract.getReward(recipient, RewardType.LP);
-        console2.log("senderLpIndex", senderLpReward2);
-        console2.log("recipientLpReward", recipientLpReward2);
         assert(senderLpReward == recipientLpReward2);
-        assert(senderLpReward2 > recipientLpReward);
-
-
+        assertEq(senderLpReward2, 1750000000000034);
     }
-
-    
 }

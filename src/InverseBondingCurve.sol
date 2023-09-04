@@ -324,15 +324,16 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         uint256 reward = 0;
         if (rewardType == RewardType.LP) {
             uint256 userLpBalance = balanceOf(recipient);
+            reward += _userLpPendingReward[recipient];
             if (userLpBalance > 0) {
-                reward = _userLpPendingReward[recipient]
-                    + _globalLpFeeIndex.sub(_userLpFeeIndexState[recipient]).mulDown(userLpBalance);
-            }
+                reward += _globalLpFeeIndex.sub(_userLpFeeIndexState[recipient]).mulDown(userLpBalance);
+            } 
+
         } else if (rewardType == RewardType.STAKING) {
             uint256 userStakingBalance = _stakingBalance[recipient];
+            reward += _userStakingPendingReward[recipient];
             if (userStakingBalance > 0) {
-                reward = _userStakingPendingReward[recipient]
-                    + _globalStakingFeeIndex.sub(_userStakingFeeIndexState[recipient]).mulDown(userStakingBalance);
+                reward += _globalStakingFeeIndex.sub(_userStakingFeeIndexState[recipient]).mulDown(userStakingBalance);
             }
         } else {}
 
@@ -374,7 +375,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
             _userLpPendingReward[user] += reward;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         } else {
-            _userLpPendingReward[user] = 0;
+            _userLpPendingReward[user] += 0;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         }
     }
