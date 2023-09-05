@@ -5,27 +5,27 @@ import "../CurveParameter.sol";
 import "../Enums.sol";
 
 interface IInverseBondingCurve {
-    function addLiquidity(address recipient, uint256 minPriceLimit) external payable;
+    // function addLiquidity(address recipient, uint256 minPriceLimit) external payable;
 
-    function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external;
+    // function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external;
 
-    function buyTokens(address recipient, uint256 maxPriceLimit) external payable;
+    // function buyTokens(address recipient, uint256 maxPriceLimit) external payable;
 
-    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external;
+    // function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external;
 
-    function stake(uint256 amount) external;
+    // function stake(uint256 amount) external;
 
-    function unstake(uint256 amount) external;
+    // function unstake(uint256 amount) external;
 
-    function claimReward(address recipient, RewardType rewardType) external;
+    // function claimReward(address recipient, RewardType rewardType) external;
 
-    function getStakingBalance(address holder) external view returns (uint256);
+    // function getStakingBalance(address holder) external view returns (uint256);
 
-    function getPrice(uint256 supply) external view returns (uint256);
+    // function getPrice(uint256 supply) external view returns (uint256);
 
-    function getInverseTokenAddress() external view returns (address);
+    // function getInverseTokenAddress() external view returns (address);
 
-    function getCurveParameters() external view returns (CurveParameter memory parameters);
+    // function getCurveParameters() external view returns (CurveParameter memory parameters);
 
-    function getReward(address recipient, RewardType rewardType) external view returns (uint256);
+    // function getReward(address recipient, RewardType rewardType) external view returns (uint256);
 }
