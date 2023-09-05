@@ -375,7 +375,6 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
             _userLpPendingReward[user] += reward;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         } else {
-            _userLpPendingReward[user] += 0;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         }
     }
