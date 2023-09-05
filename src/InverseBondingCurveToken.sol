@@ -2,8 +2,6 @@
 pragma solidity ^0.8.18;
 
 import "openzeppelin/token/ERC20/ERC20.sol";
-import "openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
-import "openzeppelin/access/AccessControl.sol";
 import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/security/Pausable.sol";
 

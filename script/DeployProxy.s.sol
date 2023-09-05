@@ -11,7 +11,7 @@ contract DeploymentProxy is Script {
         // Put secret in .secret file under contracts folder
         string memory seedPhrase = vm.readFile(".secret");
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
-        address curveContractAddress = vm.parseAddress("0xbfd3c8a956afb7a9754c951d03c9adda7ec5d638");
+        address curveContractAddress = vm.parseAddress("0xdc57724ea354ec925baffca0ccf8a1248a8e5cf1");
         vm.startBroadcast(privateKey);
 
         InverseBondingCurveProxy proxyContract = new InverseBondingCurveProxy(curveContractAddress, "");

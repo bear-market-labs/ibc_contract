@@ -20,7 +20,7 @@ contract InverseBondingCurveProxyTest is Test {
         curveContract = new InverseBondingCurve();  
         InverseBondingCurveProxy proxy = new InverseBondingCurveProxy(address(curveContract), "");
         curveContract = InverseBondingCurve(address(proxy)); 
-        curveContract.initialize{value: 2 ether}(1e18, 1e18, otherRecipient);    
+        curveContract.initialize{value: 2 ether}(1e18, 1e18, otherRecipient, otherRecipient);    
     }
 
     function testSymbol() public {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
+import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/utils/math/SignedMath.sol";
 
 // import "openzeppelin/access/Ownable.sol";
@@ -11,7 +12,8 @@ import "oz-upgradeable/proxy/utils/Initializable.sol";
 import "oz-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "./interface/IInverseBondingCurve.sol";
-import "./InverseBondingCurveToken.sol";
+import "./interface/IInverseBondingCurveToken.sol";
+// import "./InverseBondingCurveToken.sol";
 import "./lib/balancer/FixedPoint.sol";
 import "./Constants.sol";
 import "./Errors.sol";
@@ -97,7 +99,7 @@ contract InverseBondingCurve is
     uint256 private _stakingFeePercent = FEE_PERCENT;
     uint256 private _protocolFeePercent = FEE_PERCENT;
 
-    InverseBondingCurveToken private _inverseToken;
+    IInverseBondingCurveToken private _inverseToken;
     mapping(address => uint256) private _userLpFeeIndexState;
     mapping(address => uint256) private _userLpPendingReward;
     mapping(address => uint256) private _userStakingFeeIndexState;
@@ -118,22 +120,25 @@ contract InverseBondingCurve is
     function initialize(
         uint256 supply,
         uint256 price,
+        address inverseTokenAddress,
         address protocolFeeOwner
     ) external payable initializer {
         require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
         require(supply > 0 && price > 0, ERR_PARAM_ZERO);  
+        require(inverseTokenAddress != address(0), ERR_EMPTY_ADDRESS); 
         require(protocolFeeOwner != address(0), ERR_EMPTY_ADDRESS); 
 
         __Pausable_init();
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ERC20_init("IBCLP", "IBCLP");
-        _inverseToken = new InverseBondingCurveToken(
-            address(this),
-            "IBC",
-            "IBC"
-        );
+        // _inverseToken = new InverseBondingCurveToken(
+        //     address(this),
+        //     "IBC",
+        //     "IBC"
+        // );
 
+        _inverseToken = IInverseBondingCurveToken(inverseTokenAddress);
         _protocolFeeOwner = protocolFeeOwner;
 
         _parameterK =
@@ -468,57 +473,57 @@ contract InverseBondingCurve is
         return address(_inverseToken);
     }
 
-    // function getCurveParameters()
-    //     external
-    //     view
-    //     returns (CurveParameter memory parameters)
-    // {
-    //     uint256 supply = _inverseToken.totalSupply();
-    //     return
-    //         CurveParameter(
-    //             address(this).balance,
-    //             supply,
-    //             getPrice(supply),
-    //             _parameterK,
-    //             _parameterM
-    //         );
-    // }
+    function getCurveParameters()
+        external
+        view
+        returns (CurveParameter memory parameters)
+    {
+        uint256 supply = _inverseToken.totalSupply();
+        return
+            CurveParameter(
+                address(this).balance,
+                supply,
+                getPrice(supply),
+                _parameterK,
+                _parameterM
+            );
+    }
 
-    // function getFeeConfig()
-    //     external
-    //     view
-    //     returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
-    // {
-    //     return (_lpFeePercent, _stakingFeePercent, _protocolFeePercent);
-    // }
+    function getFeeConfig()
+        external
+        view
+        returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
+    {
+        return (_lpFeePercent, _stakingFeePercent, _protocolFeePercent);
+    }
 
-    // function getReward(
-    //     address recipient,
-    //     RewardType rewardType
-    // ) external view returns (uint256) {
-    //     uint256 reward = 0;
-    //     if (rewardType == RewardType.LP) {
-    //         uint256 userLpBalance = balanceOf(recipient);
-    //         if (userLpBalance > 0) {
-    //             reward =
-    //                 _userLpPendingReward[recipient] +
-    //                 _globalLpFeeIndex
-    //                     .sub(_userLpFeeIndexState[recipient])
-    //                     .mulDown(userLpBalance);
-    //         }
-    //     } else if (rewardType == RewardType.STAKING) {
-    //         uint256 userStakingBalance = _stakingBalance[recipient];
-    //         if (userStakingBalance > 0) {
-    //             reward =
-    //                 _userStakingPendingReward[recipient] +
-    //                 _globalStakingFeeIndex
-    //                     .sub(_userStakingFeeIndexState[recipient])
-    //                     .mulDown(userStakingBalance);
-    //         }
-    //     } else {}
+    function getReward(
+        address recipient,
+        RewardType rewardType
+    ) external view returns (uint256) {
+        uint256 reward = 0;
+        if (rewardType == RewardType.LP) {
+            uint256 userLpBalance = balanceOf(recipient);
+            if (userLpBalance > 0) {
+                reward =
+                    _userLpPendingReward[recipient] +
+                    _globalLpFeeIndex
+                        .sub(_userLpFeeIndexState[recipient])
+                        .mulDown(userLpBalance);
+            }
+        } else if (rewardType == RewardType.STAKING) {
+            uint256 userStakingBalance = _stakingBalance[recipient];
+            if (userStakingBalance > 0) {
+                reward =
+                    _userStakingPendingReward[recipient] +
+                    _globalStakingFeeIndex
+                        .sub(_userStakingFeeIndexState[recipient])
+                        .mulDown(userStakingBalance);
+            }
+        } else {}
 
-    //     return reward;
-    // }
+        return reward;
+    }
 
     function getStakingBalance(address holder) external view returns (uint256) {
         return _stakingBalance[holder];
