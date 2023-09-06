@@ -49,6 +49,9 @@ contract InverseBondingCurve is
         uint256 newParameterM
     );
 
+    event LiquidityStaked(address indexed from, uint256 amount);
+    event LiquidityUnstaked(address indexed from, uint256 amount);
+
     event TokenBought(address indexed from, address indexed recipient, uint256 amountIn, uint256 amountOut);
 
     event TokenSold(address indexed from, address indexed recipient, uint256 amountIn, uint256 amountOut);
@@ -270,6 +273,8 @@ contract InverseBondingCurve is
         _inverseToken.transferFrom(msg.sender, address(this), amount);
         _stakingBalance[msg.sender] += amount;
         _totalStaked += amount;
+
+        emit LiquidityStaked(msg.sender, amount);
     }
 
     function unstake(uint256 amount) external whenNotPaused {
@@ -279,6 +284,8 @@ contract InverseBondingCurve is
         _inverseToken.transfer(msg.sender, amount);
         _stakingBalance[msg.sender] -= amount;
         _totalStaked -= amount;
+
+        emit LiquidityUnstaked(msg.sender, amount);
     }
 
     function claimReward(address recipient, RewardType rewardType) external whenNotPaused {
@@ -290,12 +297,12 @@ contract InverseBondingCurve is
         } else {}
     }
 
-    function claimProtocolReward(address recipient) external onlyOwner whenNotPaused {
+    function claimProtocolReward() external onlyOwner whenNotPaused {
         uint256 amount = _protocolFee;
         _protocolFee = 0;
-        _inverseToken.transfer(recipient, amount);
+        _inverseToken.transfer(_protocolFeeOwner, amount);
 
-        emit RewardClaimed(msg.sender, recipient, RewardType.PROTOCOL, amount);
+        emit RewardClaimed(msg.sender, _protocolFeeOwner, RewardType.PROTOCOL, amount);
     }
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
@@ -420,5 +427,7 @@ contract InverseBondingCurve is
         super._beforeTokenTransfer(from, to, amount);
     }
 
+    // =============================!!! Do not remove below method !!!=============================
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    // ============================================================================================
 }
