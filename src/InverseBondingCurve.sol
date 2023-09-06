@@ -148,7 +148,10 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         require(currentPrice >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentBalance = address(this).balance;
-        uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance.sub(msg.value));
+        // uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance.sub(msg.value));
+
+        uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance.sub(msg.value).sub(currentIbcSupply.mulDown(currentPrice)));
+
 
         _updateLpReward(recipient);
         _mint(recipient, mintToken);
@@ -168,7 +171,8 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         require(currentPrice <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentBalance = address(this).balance;
-        uint256 returnLiquidity = amount.mulDown(currentBalance).divDown(totalSupply());
+        // uint256 returnLiquidity = amount.mulDown(currentBalance).divDown(totalSupply());
+        uint256 returnLiquidity = amount.mulDown(currentBalance.sub(currentIbcSupply.mulDown(currentPrice))).divDown(totalSupply());
 
         _updateLpReward(msg.sender);
         _burn(msg.sender, amount);
