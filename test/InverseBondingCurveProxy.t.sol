@@ -9,6 +9,7 @@ import "forge-std/console2.sol";
 
 contract InverseBondingCurveProxyTest is Test {
     InverseBondingCurve public curveContract;
+    InverseBondingCurveToken tokenContract;
 
     uint256 ALLOWED_ERROR = 1e8;
 
@@ -19,8 +20,9 @@ contract InverseBondingCurveProxyTest is Test {
     function setUp() public {
         curveContract = new InverseBondingCurve();  
         InverseBondingCurveProxy proxy = new InverseBondingCurveProxy(address(curveContract), "");
+        tokenContract = new InverseBondingCurveToken(address(proxy), "IBC", "IBC");
         curveContract = InverseBondingCurve(address(proxy)); 
-        curveContract.initialize{value: 2 ether}(1e18, 1e18, otherRecipient, otherRecipient);    
+        curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);    
     }
 
     function testSymbol() public {
@@ -28,9 +30,10 @@ contract InverseBondingCurveProxyTest is Test {
     }
 
     function testInverseTokenSymbol() public {
-        InverseBondingCurveToken tokenContract = InverseBondingCurveToken(curveContract.getInverseTokenAddress());
+        InverseBondingCurveToken tokenContractAddr = InverseBondingCurveToken(curveContract.getInverseTokenAddress());
 
         assertEq(tokenContract.symbol(), "IBC");
+        assertEq(address(tokenContract), address(tokenContractAddr));
     }
 
 }

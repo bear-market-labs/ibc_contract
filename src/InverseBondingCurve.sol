@@ -95,9 +95,9 @@ contract InverseBondingCurve is
     uint256 private _globalStakingFeeIndex;
 
     // swap fee percent = _lpFeePercent + _stakingFeePercent + _protocolFeePercent
-    uint256 private _lpFeePercent = FEE_PERCENT;
-    uint256 private _stakingFeePercent = FEE_PERCENT;
-    uint256 private _protocolFeePercent = FEE_PERCENT;
+    uint256 private _lpFeePercent;
+    uint256 private _stakingFeePercent;
+    uint256 private _protocolFeePercent;
 
     IInverseBondingCurveToken private _inverseToken;
     mapping(address => uint256) private _userLpFeeIndexState;
@@ -124,9 +124,9 @@ contract InverseBondingCurve is
         address protocolFeeOwner
     ) external payable initializer {
         require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
-        require(supply > 0 && price > 0, ERR_PARAM_ZERO);  
-        require(inverseTokenAddress != address(0), ERR_EMPTY_ADDRESS); 
-        require(protocolFeeOwner != address(0), ERR_EMPTY_ADDRESS); 
+        require(supply > 0 && price > 0, ERR_PARAM_ZERO);
+        require(inverseTokenAddress != address(0), ERR_EMPTY_ADDRESS);
+        require(protocolFeeOwner != address(0), ERR_EMPTY_ADDRESS);
 
         __Pausable_init();
         __Ownable_init();
@@ -137,6 +137,10 @@ contract InverseBondingCurve is
         //     "IBC",
         //     "IBC"
         // );
+
+        _lpFeePercent = FEE_PERCENT;
+        _stakingFeePercent = FEE_PERCENT;
+        _protocolFeePercent = FEE_PERCENT;
 
         _inverseToken = IInverseBondingCurveToken(inverseTokenAddress);
         _protocolFeeOwner = protocolFeeOwner;
@@ -371,8 +375,7 @@ contract InverseBondingCurve is
         uint256 minPriceLimit
     ) external whenNotPaused {
         require(
-            _inverseToken.balanceOf(msg.sender) - _stakingBalance[msg.sender] >=
-                amount,
+            _inverseToken.balanceOf(msg.sender) >= amount,
             ERR_INSUFFICIENT_BALANCE
         );
         require(amount >= MIN_SUPPLY, ERR_LIQUIDITY_TOO_SMALL);
@@ -409,6 +412,7 @@ contract InverseBondingCurve is
         );
 
         _updateStakingReward(msg.sender);
+        _inverseToken.transferFrom(msg.sender, address(this), amount);
         _stakingBalance[msg.sender] += amount;
         _totalStaked += amount;
     }
@@ -420,6 +424,7 @@ contract InverseBondingCurve is
         );
 
         _updateStakingReward(msg.sender);
+        _inverseToken.transfer(msg.sender, amount);
         _stakingBalance[msg.sender] -= amount;
         _totalStaked -= amount;
     }
