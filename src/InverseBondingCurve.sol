@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "openzeppelin/token/ERC20/ERC20.sol";
 import "openzeppelin/token/ERC20/IERC20.sol";
-import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin/utils/Strings.sol";
 import "openzeppelin/utils/math/SignedMath.sol";
-import "openzeppelin/security/ReentrancyGuard.sol";
-import "openzeppelin/access/Ownable.sol";
+import "oz-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "oz-upgradeable/security/PausableUpgradeable.sol";
+import "oz-upgradeable/access/OwnableUpgradeable.sol";
+import "oz-upgradeable/proxy/utils/Initializable.sol";
+import "oz-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "./interface/IInverseBondingCurve.sol";
-import "./InverseBondingCurveToken.sol";
+import "./interface/IInverseBondingCurveToken.sol";
 import "./lib/balancer/FixedPoint.sol";
 import "./Constants.sol";
 import "./Errors.sol";
@@ -18,10 +18,16 @@ import "./CurveParameter.sol";
 import "./Enums.sol";
 
 //TODO: add logic for transfer owner: we need to change owner of inversetoken contract
-contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
+contract InverseBondingCurve is
+    Initializable,
+    UUPSUpgradeable,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ERC20Upgradeable,
+    IInverseBondingCurve
+{
     using FixedPoint for uint256;
     using SignedMath for int256;
-    using SafeERC20 for IERC20;
     /// ERRORS ///
 
     /// EVENTS ///
@@ -71,7 +77,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
     uint256 private _stakingFeePercent;
     uint256 private _protocolFeePercent;
 
-    InverseBondingCurveToken private immutable _inverseToken;
+    IInverseBondingCurveToken private _inverseToken;
     mapping(address => uint256) private _userLpFeeIndexState;
     mapping(address => uint256) private _userLpPendingReward;
     mapping(address => uint256) private _userStakingFeeIndexState;
@@ -81,29 +87,48 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
 
     /// MODIFIERS ///
 
-    modifier onlyInitialized() {
-        require(_isInitialized, ERR_POOL_NOT_INITIALIZED);
-        _;
-    }
-
     ///
     /// CONSTRUCTOR
     ///
 
-    /// @notice Pool contract constructor
-    /// @dev ETH should be wrapped to WETH
-    constructor(address protocolFeeOwner) ERC20("IBCLP", "IBCLP") {
-        _inverseToken = new InverseBondingCurveToken(
-            address(this),
-            "IBC",
-            "IBC"
-        );
+    constructor() {
+        _disableInitializers();
+    }
 
-        _protocolFeeOwner = protocolFeeOwner;
+    function initialize(uint256 supply, uint256 price, address inverseTokenAddress, address protocolFeeOwner)
+        external
+        payable
+        initializer
+    {
+        require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
+        require(supply > 0 && price > 0, ERR_PARAM_ZERO);
+        require(inverseTokenAddress != address(0), ERR_EMPTY_ADDRESS);
+        require(protocolFeeOwner != address(0), ERR_EMPTY_ADDRESS);
+
+        __Pausable_init();
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        __ERC20_init("IBCLP", "IBCLP");
+
         _lpFeePercent = FEE_PERCENT;
         _stakingFeePercent = FEE_PERCENT;
         _protocolFeePercent = FEE_PERCENT;
-    }
+
+        _inverseToken = IInverseBondingCurveToken(inverseTokenAddress);
+        _protocolFeeOwner = protocolFeeOwner;
+
+        _parameterK = ONE_INT - int256(supply.mulDown(price).divDown(msg.value));
+        require(_parameterK > 0 && _parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
+        _parameterM = price.mulDown(supply.pow(_parameterK));
+
+        _updateLpReward(msg.sender);
+        // mint LP token
+        _mint(msg.sender, msg.value);
+        // mint IBC token
+        _inverseToken.mint(msg.sender, supply);
+
+        emit LiquidityAdded(msg.sender, msg.sender, msg.value, supply, _parameterK, _parameterM);
+    }   
 
     function updateFeeConfig(uint256 lpFee, uint256 stakingFee, uint256 protocolFee) external onlyOwner {
         require((lpFee + stakingFee + protocolFee) < 5e17, ERR_FEE_PERCENT_OUT_OF_RANGE);
@@ -121,25 +146,17 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit FeeOwnerChanged(protocolFeeOwner);
     }
 
-    function initialize(uint256 supply, uint256 price) external payable onlyOwner {
-        require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
-        require(supply > 0 && price > 0, ERR_PARAM_ZERO);
-        _isInitialized = true;
-
-        _parameterK = ONE_INT - int256(supply.mulDown(price).divDown(msg.value));
-        require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
-        _parameterM = price.mulDown(supply.pow(_parameterK));
-
-        _updateLpReward(msg.sender);
-        // mint LP token
-        _mint(msg.sender, msg.value);
-        // mint IBC token
-        _inverseToken.mint(msg.sender, supply);
-
-        emit LiquidityAdded(msg.sender, msg.sender, msg.value, supply, _parameterK, _parameterM);
+    function pause() external onlyOwner {
+        _pause();
+        _inverseToken.pause();
     }
 
-    function addLiquidity(address recipient, uint256 minPriceLimit) external payable onlyInitialized {
+    function unpause() external onlyOwner {
+        _unpause();
+        _inverseToken.unpause();
+    }
+
+    function addLiquidity(address recipient, uint256 minPriceLimit) external payable whenNotPaused {
         require(msg.value > MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
@@ -148,10 +165,9 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         require(currentPrice >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentBalance = address(this).balance;
-        // uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance.sub(msg.value));
-
-        uint256 mintToken = totalSupply().mulDown(msg.value).divDown(currentBalance.sub(msg.value).sub(currentIbcSupply.mulDown(currentPrice)));
-
+        uint256 mintToken = totalSupply().mulDown(msg.value).divDown(
+            currentBalance.sub(msg.value).sub(currentIbcSupply.mulDown(currentPrice))
+        );
 
         _updateLpReward(recipient);
         _mint(recipient, mintToken);
@@ -162,7 +178,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit LiquidityAdded(msg.sender, recipient, msg.value, mintToken, _parameterK, _parameterM);
     }
 
-    function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external onlyInitialized {
+    function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external whenNotPaused {
         require(balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
@@ -171,8 +187,8 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         require(currentPrice <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentBalance = address(this).balance;
-        // uint256 returnLiquidity = amount.mulDown(currentBalance).divDown(totalSupply());
-        uint256 returnLiquidity = amount.mulDown(currentBalance.sub(currentIbcSupply.mulDown(currentPrice))).divDown(totalSupply());
+        uint256 returnLiquidity =
+            amount.mulDown(currentBalance.sub(currentIbcSupply.mulDown(currentPrice))).divDown(totalSupply());
 
         _updateLpReward(msg.sender);
         _burn(msg.sender, amount);
@@ -187,7 +203,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit LiquidityRemoved(msg.sender, recipient, amount, returnLiquidity, _parameterK, _parameterM);
     }
 
-    function _calculateAndUpdateFee(uint256 tokenAmount) private onlyInitialized returns (uint256 totalFee) {
+    function _calculateAndUpdateFee(uint256 tokenAmount) private returns (uint256 totalFee) {
         uint256 lpFee = tokenAmount.mulDown(_lpFeePercent);
         uint256 stakingFee = tokenAmount.mulDown(_stakingFeePercent);
         uint256 protocolFee = tokenAmount.mulDown(_protocolFeePercent);
@@ -204,7 +220,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         return lpFee + stakingFee + protocolFee;
     }
 
-    function buyTokens(address recipient, uint256 maxPriceLimit) external payable onlyInitialized {
+    function buyTokens(address recipient, uint256 maxPriceLimit) external payable whenNotPaused {
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
         require(msg.value > MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
 
@@ -223,8 +239,8 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit TokenBought(msg.sender, recipient, msg.value, mintToken);
     }
 
-    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external onlyInitialized {
-        require(_inverseToken.balanceOf(msg.sender) - _stakingBalance[msg.sender] >= amount, ERR_INSUFFICIENT_BALANCE);
+    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external whenNotPaused {
+        require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
         require(amount >= MIN_SUPPLY, ERR_LIQUIDITY_TOO_SMALL);
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
@@ -247,23 +263,25 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit TokenSold(msg.sender, recipient, amount, returnLiquidity);
     }
 
-    function stake(uint256 amount) external onlyInitialized {
+    function stake(uint256 amount) external whenNotPaused {
         require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
 
         _updateStakingReward(msg.sender);
+        _inverseToken.transferFrom(msg.sender, address(this), amount);
         _stakingBalance[msg.sender] += amount;
         _totalStaked += amount;
     }
 
-    function unstake(uint256 amount) external onlyInitialized {
+    function unstake(uint256 amount) external whenNotPaused {
         require(_stakingBalance[msg.sender] >= amount && _totalStaked >= amount, ERR_INSUFFICIENT_BALANCE);
 
         _updateStakingReward(msg.sender);
+        _inverseToken.transfer(msg.sender, amount);
         _stakingBalance[msg.sender] -= amount;
         _totalStaked -= amount;
     }
 
-    function claimReward(address recipient, RewardType rewardType) external onlyInitialized {
+    function claimReward(address recipient, RewardType rewardType) external whenNotPaused {
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
         if (RewardType.LP == rewardType) {
             _claimLpReward(recipient, rewardType);
@@ -272,7 +290,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         } else {}
     }
 
-    function claimProtocolReward(address recipient) external onlyInitialized onlyOwner {
+    function claimProtocolReward(address recipient) external onlyOwner whenNotPaused {
         uint256 amount = _protocolFee;
         _protocolFee = 0;
         _inverseToken.transfer(recipient, amount);
@@ -280,16 +298,32 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit RewardClaimed(msg.sender, recipient, RewardType.PROTOCOL, amount);
     }
 
-    function getPrice(uint256 supply) public view onlyInitialized returns (uint256) {
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
+        // update the sender/recipient rewards state before balances change
+        _updateLpReward(msg.sender);
+        _updateLpReward(recipient);
+
+        return (super.transfer(recipient, amount));
+    }
+
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        // update the sender/recipient rewards state before balances change
+        _updateLpReward(from);
+        _updateLpReward(to);
+
+        return (super.transferFrom(from, to, amount));
+    }
+
+    function getPrice(uint256 supply) public view returns (uint256) {
         return _parameterM.divDown(supply.pow(_parameterK));
     }
 
-    function getLiquidityFromSupply(uint256 supply) public view onlyInitialized returns (uint256) {
+    function getLiquidityFromSupply(uint256 supply) public view returns (uint256) {
         uint256 oneMinusK = uint256(ONE_INT - _parameterK);
         return _parameterM.mulDown(supply.powDown(oneMinusK)).divDown(oneMinusK);
     }
 
-    function getSupplyFromLiquidity(uint256 liquidity) public view onlyInitialized returns (uint256) {
+    function getSupplyFromLiquidity(uint256 liquidity) public view returns (uint256) {
         uint256 oneMinusK = uint256(ONE_INT - _parameterK);
 
         return liquidity.mulDown(oneMinusK).divDown(_parameterM).powDown(ONE_UINT.divDown(oneMinusK));
@@ -312,15 +346,15 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         uint256 reward = 0;
         if (rewardType == RewardType.LP) {
             uint256 userLpBalance = balanceOf(recipient);
+            reward += _userLpPendingReward[recipient];
             if (userLpBalance > 0) {
-                reward = _userLpPendingReward[recipient]
-                    + _globalLpFeeIndex.sub(_userLpFeeIndexState[recipient]).mulDown(userLpBalance);
+                reward += _globalLpFeeIndex.sub(_userLpFeeIndexState[recipient]).mulDown(userLpBalance);
             }
         } else if (rewardType == RewardType.STAKING) {
             uint256 userStakingBalance = _stakingBalance[recipient];
+            reward += _userStakingPendingReward[recipient];
             if (userStakingBalance > 0) {
-                reward = _userStakingPendingReward[recipient]
-                    + _globalStakingFeeIndex.sub(_userStakingFeeIndexState[recipient]).mulDown(userStakingBalance);
+                reward += _globalStakingFeeIndex.sub(_userStakingFeeIndexState[recipient]).mulDown(userStakingBalance);
             }
         } else {}
 
@@ -331,7 +365,11 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         return _stakingBalance[holder];
     }
 
-    function _claimLpReward(address recipient, RewardType rewardType) private onlyInitialized {
+    function getImplementation() external view returns (address) {
+        return _getImplementation();
+    }
+
+    function _claimLpReward(address recipient, RewardType rewardType) private {
         _updateLpReward(msg.sender);
 
         if (_userLpPendingReward[msg.sender] > 0) {
@@ -343,7 +381,7 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         }
     }
 
-    function _claimStakingReward(address recipient, RewardType rewardType) private onlyInitialized {
+    function _claimStakingReward(address recipient, RewardType rewardType) private {
         _updateStakingReward(msg.sender);
 
         if (_userStakingPendingReward[msg.sender] > 0) {
@@ -355,19 +393,18 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         }
     }
 
-    function _updateLpReward(address user) private onlyInitialized {
+    function _updateLpReward(address user) private {
         uint256 userLpBalance = balanceOf(user);
         if (userLpBalance > 0) {
             uint256 reward = _globalLpFeeIndex.sub(_userLpFeeIndexState[user]).mulDown(userLpBalance);
             _userLpPendingReward[user] += reward;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         } else {
-            _userLpPendingReward[user] = 0;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         }
     }
 
-    function _updateStakingReward(address user) private onlyInitialized {
+    function _updateStakingReward(address user) private {
         uint256 userStakingBalance = _stakingBalance[user];
         if (userStakingBalance > 0) {
             uint256 reward = _globalStakingFeeIndex.sub(_userStakingFeeIndexState[user]).mulDown(userStakingBalance);
@@ -378,4 +415,10 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
             _userStakingFeeIndexState[user] = _globalStakingFeeIndex;
         }
     }
+
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override whenNotPaused {
+        super._beforeTokenTransfer(from, to, amount);
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
