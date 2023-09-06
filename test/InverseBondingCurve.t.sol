@@ -317,4 +317,44 @@ contract InverseBondingCurveTest is Test {
         console2.log("otherRecipientFee", otherRecipientFee);
         console2.log("thirdRecipientFee", thirdRecipientFee);
     }
+
+    function testLpTransfers() public {
+
+        //add liquidity
+        curveContract.initialize{value: 2 ether}(1e18, 1e18);
+        assertEq(curveContract.balanceOf(recipient), 2e18);
+        assertEq(curveContract.getReward(recipient, RewardType.LP), 0);
+
+        //perform mints to generate lp fees
+        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+
+        //transfer from recipient to otherRecipient
+        //confirm sender/recipient's reward state
+        vm.startPrank(recipient);
+        curveContract.transfer(otherRecipient, 2e18);
+        vm.stopPrank();
+
+        uint256 senderLpReward = curveContract.getReward(recipient, RewardType.LP);
+        uint256 recipientLpReward = curveContract.getReward(otherRecipient, RewardType.LP);
+        assertEq(senderLpReward, 1250000000000044);
+        assert(recipientLpReward == 0);
+        
+        //perform more mints to generate lp fees
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18);
+
+        //transferfrom otherRecipient to recipient
+        //confirm sender/recipient's reward state
+        vm.startPrank(otherRecipient);
+        curveContract.approve(recipient, 10e18);
+        vm.stopPrank();
+
+        vm.startPrank(recipient);
+        curveContract.transferFrom(otherRecipient, recipient , 2e18);
+        vm.stopPrank();
+
+        uint256 senderLpReward2 = curveContract.getReward(otherRecipient, RewardType.LP);
+        uint256 recipientLpReward2 = curveContract.getReward(recipient, RewardType.LP);
+        assert(senderLpReward == recipientLpReward2);
+        assertEq(senderLpReward2, 1750000000000034);
+    }
 }

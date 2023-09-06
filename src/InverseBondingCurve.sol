@@ -276,6 +276,22 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         emit RewardClaimed(msg.sender, recipient, RewardType.PROTOCOL, amount);
     }
 
+    function transfer(address recipient, uint256 amount) public override returns (bool){
+        // update the sender/recipient rewards state before balances change
+        _updateLpReward(msg.sender);
+        _updateLpReward(recipient);
+
+        return(super.transfer(recipient, amount));
+    }
+
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool){
+        // update the sender/recipient rewards state before balances change
+        _updateLpReward(from);
+        _updateLpReward(to);
+
+        return(super.transferFrom(from, to, amount));
+    }
+
     function getPrice(uint256 supply) public view onlyInitialized returns (uint256) {
         return _parameterM.divDown(supply.pow(_parameterK));
     }
@@ -308,15 +324,16 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
         uint256 reward = 0;
         if (rewardType == RewardType.LP) {
             uint256 userLpBalance = balanceOf(recipient);
+            reward += _userLpPendingReward[recipient];
             if (userLpBalance > 0) {
-                reward = _userLpPendingReward[recipient]
-                    + _globalLpFeeIndex.sub(_userLpFeeIndexState[recipient]).mulDown(userLpBalance);
-            }
+                reward += _globalLpFeeIndex.sub(_userLpFeeIndexState[recipient]).mulDown(userLpBalance);
+            } 
+
         } else if (rewardType == RewardType.STAKING) {
             uint256 userStakingBalance = _stakingBalance[recipient];
+            reward += _userStakingPendingReward[recipient];
             if (userStakingBalance > 0) {
-                reward = _userStakingPendingReward[recipient]
-                    + _globalStakingFeeIndex.sub(_userStakingFeeIndexState[recipient]).mulDown(userStakingBalance);
+                reward += _globalStakingFeeIndex.sub(_userStakingFeeIndexState[recipient]).mulDown(userStakingBalance);
             }
         } else {}
 
@@ -358,7 +375,6 @@ contract InverseBondingCurve is IInverseBondingCurve, ERC20, Ownable {
             _userLpPendingReward[user] += reward;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         } else {
-            _userLpPendingReward[user] = 0;
             _userLpFeeIndexState[user] = _globalLpFeeIndex;
         }
     }
