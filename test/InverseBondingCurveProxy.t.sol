@@ -18,11 +18,11 @@ contract InverseBondingCurveProxyTest is Test {
     uint256 feePercent = 3e15;
 
     function setUp() public {
-        curveContract = new InverseBondingCurve();  
+        curveContract = new InverseBondingCurve();
         InverseBondingCurveProxy proxy = new InverseBondingCurveProxy(address(curveContract), "");
         tokenContract = new InverseBondingCurveToken(address(proxy), "IBC", "IBC");
-        curveContract = InverseBondingCurve(address(proxy)); 
-        curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);    
+        curveContract = InverseBondingCurve(address(proxy));
+        curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
     }
 
     function testSymbol() public {
@@ -35,5 +35,4 @@ contract InverseBondingCurveProxyTest is Test {
         assertEq(tokenContract.symbol(), "IBC");
         assertEq(address(tokenContract), address(tokenContractAddr));
     }
-
 }

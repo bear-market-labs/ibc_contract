@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.13;
+
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 interface IInverseBondingCurveToken {
-
     /**
      * @dev Returns the amount of tokens in existence.
      */
@@ -23,7 +23,6 @@ interface IInverseBondingCurveToken {
      */
     function transfer(address to, uint256 amount) external returns (bool);
 
-
     /**
      * @dev Moves `amount` tokens from `from` to `to` using the
      * allowance mechanism. `amount` is then deducted from the caller's
@@ -33,11 +32,7 @@ interface IInverseBondingCurveToken {
      *
      * Emits a {Transfer} event.
      */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
 
     function pause() external;
 
