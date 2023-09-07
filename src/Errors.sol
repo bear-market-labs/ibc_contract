@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 string constant ERR_POOL_NOT_INITIALIZED = "Can only be called after pool is initialized";
 

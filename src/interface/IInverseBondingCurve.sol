@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 import "../CurveParameter.sol";
 import "../Enums.sol";
@@ -19,13 +19,15 @@ interface IInverseBondingCurve {
 
     function claimReward(address recipient, RewardType rewardType) external;
 
-    function getStakingBalance(address holder) external view returns (uint256);
+    function stakingBalanceOf(address holder) external view returns (uint256);
 
-    function getPrice(uint256 supply) external view returns (uint256);
+    function priceOf(uint256 supply) external view returns (uint256);
 
-    function getInverseTokenAddress() external view returns (address);
+    function inverseTokenAddress() external view returns (address);
 
-    function getCurveParameters() external view returns (CurveParameter memory parameters);
+    function curveParameters() external view returns (CurveParameter memory parameters);
 
-    function getReward(address recipient, RewardType rewardType) external view returns (uint256);
+    function feeConfig() external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
+
+    function rewardOf(address recipient, RewardType rewardType) external view returns (uint256);
 }

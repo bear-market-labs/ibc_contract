@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/utils/math/SignedMath.sol";
 import "oz-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "oz-upgradeable/security/PausableUpgradeable.sol";
@@ -28,6 +29,7 @@ contract InverseBondingCurve is
 {
     using FixedPoint for uint256;
     using SignedMath for int256;
+    using SafeERC20 for IERC20;
     /// ERRORS ///
 
     /// EVENTS ///
@@ -71,7 +73,6 @@ contract InverseBondingCurve is
 
     int256 private _parameterK;
     uint256 private _parameterM;
-    bool private _isInitialized;
     uint256 private _globalLpFeeIndex;
     uint256 private _globalStakingFeeIndex;
 
@@ -98,14 +99,14 @@ contract InverseBondingCurve is
         _disableInitializers();
     }
 
-    function initialize(uint256 supply, uint256 price, address inverseTokenAddress, address protocolFeeOwner)
+    function initialize(uint256 supply, uint256 price, address inverseTokenContractAddress, address protocolFeeOwner)
         external
         payable
         initializer
     {
         require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
         require(supply > 0 && price > 0, ERR_PARAM_ZERO);
-        require(inverseTokenAddress != address(0), ERR_EMPTY_ADDRESS);
+        require(inverseTokenContractAddress != address(0), ERR_EMPTY_ADDRESS);
         require(protocolFeeOwner != address(0), ERR_EMPTY_ADDRESS);
 
         __Pausable_init();
@@ -117,7 +118,7 @@ contract InverseBondingCurve is
         _stakingFeePercent = FEE_PERCENT;
         _protocolFeePercent = FEE_PERCENT;
 
-        _inverseToken = IInverseBondingCurveToken(inverseTokenAddress);
+        _inverseToken = IInverseBondingCurveToken(inverseTokenContractAddress);
         _protocolFeeOwner = protocolFeeOwner;
 
         _parameterK = ONE_INT - int256(supply.mulDown(price).divDown(msg.value));
@@ -130,6 +131,7 @@ contract InverseBondingCurve is
         // mint IBC token
         _inverseToken.mint(msg.sender, supply);
 
+        emit FeeOwnerChanged(protocolFeeOwner);
         emit LiquidityAdded(msg.sender, msg.sender, msg.value, supply, _parameterK, _parameterM);
     }   
 
@@ -164,7 +166,7 @@ contract InverseBondingCurve is
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
         uint256 currentIbcSupply = _inverseToken.totalSupply();
-        uint256 currentPrice = getPrice(currentIbcSupply);
+        uint256 currentPrice = priceOf(currentIbcSupply);
         require(currentPrice >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentBalance = address(this).balance;
@@ -186,7 +188,7 @@ contract InverseBondingCurve is
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
         uint256 currentIbcSupply = _inverseToken.totalSupply();
-        uint256 currentPrice = getPrice(currentIbcSupply);
+        uint256 currentPrice = priceOf(currentIbcSupply);
         require(currentPrice <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentBalance = address(this).balance;
@@ -195,13 +197,13 @@ contract InverseBondingCurve is
 
         _updateLpReward(msg.sender);
         _burn(msg.sender, amount);
-        (bool sent,) = recipient.call{value: returnLiquidity}("");
-        require(sent, "Failed to send Ether");
 
-        currentBalance = address(this).balance;
-        _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(currentBalance));
+        uint256 newBalance = currentBalance - returnLiquidity;
+        _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(newBalance));
         require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
         _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
+        (bool sent,) = recipient.call{value: returnLiquidity}("");
+        require(sent, "Failed to send Ether");
 
         emit LiquidityRemoved(msg.sender, recipient, amount, returnLiquidity, _parameterK, _parameterM);
     }
@@ -258,7 +260,7 @@ contract InverseBondingCurve is
         // Change state
         // _globalLpFeeIndex += fee.divDown(totalSupply());
         _inverseToken.burnFrom(msg.sender, burnToken);
-        _inverseToken.transferFrom(msg.sender, address(this), fee);
+        IERC20(_inverseToken).safeTransferFrom(msg.sender, address(this), fee);
 
         (bool sent,) = recipient.call{value: returnLiquidity}("");
         require(sent, "Failed to send Ether");
@@ -270,9 +272,9 @@ contract InverseBondingCurve is
         require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
 
         _updateStakingReward(msg.sender);
-        _inverseToken.transferFrom(msg.sender, address(this), amount);
         _stakingBalance[msg.sender] += amount;
         _totalStaked += amount;
+        IERC20(_inverseToken).safeTransferFrom(msg.sender, address(this), amount);
 
         emit LiquidityStaked(msg.sender, amount);
     }
@@ -281,9 +283,9 @@ contract InverseBondingCurve is
         require(_stakingBalance[msg.sender] >= amount && _totalStaked >= amount, ERR_INSUFFICIENT_BALANCE);
 
         _updateStakingReward(msg.sender);
-        _inverseToken.transfer(msg.sender, amount);
         _stakingBalance[msg.sender] -= amount;
         _totalStaked -= amount;
+        IERC20(_inverseToken).safeTransfer(msg.sender, amount);
 
         emit LiquidityUnstaked(msg.sender, amount);
     }
@@ -300,7 +302,7 @@ contract InverseBondingCurve is
     function claimProtocolReward() external onlyOwner whenNotPaused {
         uint256 amount = _protocolFee;
         _protocolFee = 0;
-        _inverseToken.transfer(_protocolFeeOwner, amount);
+        IERC20(_inverseToken).safeTransfer(_protocolFeeOwner, amount);
 
         emit RewardClaimed(msg.sender, _protocolFeeOwner, RewardType.PROTOCOL, amount);
     }
@@ -321,7 +323,7 @@ contract InverseBondingCurve is
         return (super.transferFrom(from, to, amount));
     }
 
-    function getPrice(uint256 supply) public view returns (uint256) {
+    function priceOf(uint256 supply) public view returns (uint256) {
         return _parameterM.divDown(supply.pow(_parameterK));
     }
 
@@ -336,20 +338,24 @@ contract InverseBondingCurve is
         return liquidity.mulDown(oneMinusK).divDown(_parameterM).powDown(ONE_UINT.divDown(oneMinusK));
     }
 
-    function getInverseTokenAddress() external view returns (address) {
+    function inverseTokenAddress() external view returns (address) {
         return address(_inverseToken);
     }
 
-    function getCurveParameters() external view returns (CurveParameter memory parameters) {
+    function curveParameters() external view returns (CurveParameter memory parameters) {
         uint256 supply = _inverseToken.totalSupply();
-        return CurveParameter(address(this).balance, supply, getPrice(supply), _parameterK, _parameterM);
+        return CurveParameter(address(this).balance, supply, priceOf(supply), _parameterK, _parameterM);
     }
 
-    function getFeeConfig() external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee) {
+    function feeConfig() external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee) {
         return (_lpFeePercent, _stakingFeePercent, _protocolFeePercent);
     }
 
-    function getReward(address recipient, RewardType rewardType) external view returns (uint256) {
+    function feeOwner() external view returns (address) {
+        return _protocolFeeOwner;
+    }
+
+    function rewardOf(address recipient, RewardType rewardType) external view returns (uint256) {
         uint256 reward = 0;
         if (rewardType == RewardType.LP) {
             uint256 userLpBalance = balanceOf(recipient);
@@ -363,12 +369,14 @@ contract InverseBondingCurve is
             if (userStakingBalance > 0) {
                 reward += _globalStakingFeeIndex.sub(_userStakingFeeIndexState[recipient]).mulDown(userStakingBalance);
             }
-        } else {}
+        } else {
+            reward = _protocolFee;
+        }
 
         return reward;
     }
 
-    function getStakingBalance(address holder) external view returns (uint256) {
+    function stakingBalanceOf(address holder) external view returns (uint256) {
         return _stakingBalance[holder];
     }
 
@@ -382,7 +390,7 @@ contract InverseBondingCurve is
         if (_userLpPendingReward[msg.sender] > 0) {
             uint256 amount = _userLpPendingReward[msg.sender];
             _userLpPendingReward[msg.sender] = 0;
-            _inverseToken.transfer(recipient, amount);
+            IERC20(_inverseToken).safeTransfer(recipient, amount);
 
             emit RewardClaimed(msg.sender, recipient, rewardType, amount);
         }
@@ -394,7 +402,7 @@ contract InverseBondingCurve is
         if (_userStakingPendingReward[msg.sender] > 0) {
             uint256 amount = _userStakingPendingReward[msg.sender];
             _userStakingPendingReward[msg.sender] = 0;
-            _inverseToken.transfer(recipient, amount);
+            IERC20(_inverseToken).safeTransfer(recipient, amount);
 
             emit RewardClaimed(msg.sender, recipient, rewardType, amount);
         }

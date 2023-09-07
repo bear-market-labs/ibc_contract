@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 import "openzeppelin/proxy/ERC1967/ERC1967Proxy.sol";
 
