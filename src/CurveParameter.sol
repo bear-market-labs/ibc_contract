@@ -5,6 +5,6 @@ struct CurveParameter {
     uint256 reserve;
     uint256 supply;
     uint256 price;
-    int256 parameterK;
-    uint256 parameterM;
+    uint256 parameterInvariant;
+    uint256 parameterUtilization;
 }

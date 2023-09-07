@@ -28,7 +28,10 @@ contract UpgradeCurve is Script {
         console2.log("IBC token address remain:", curveContract.inverseTokenAddress());
         curveContract.upgradeTo(newCurveContractAddress);
         console2.log("LP balance after upgrade:", curveContract.balanceOf(oneLiqudityProvider));
-        console2.log("LP IBC balance after upgrade:", InverseBondingCurveToken(curveContract.inverseTokenAddress()).balanceOf(oneLiqudityProvider));
+        console2.log(
+            "LP IBC balance after upgrade:",
+            InverseBondingCurveToken(curveContract.inverseTokenAddress()).balanceOf(oneLiqudityProvider)
+        );
         vm.stopBroadcast();
     }
 }
