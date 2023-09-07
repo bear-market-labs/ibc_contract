@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 import "forge-std/Test.sol";
 import "../src/InverseBondingCurve.sol";
@@ -30,7 +30,7 @@ contract InverseBondingCurveProxyTest is Test {
     }
 
     function testInverseTokenSymbol() public {
-        InverseBondingCurveToken tokenContractAddr = InverseBondingCurveToken(curveContract.getInverseTokenAddress());
+        InverseBondingCurveToken tokenContractAddr = InverseBondingCurveToken(curveContract.inverseTokenAddress());
 
         assertEq(tokenContract.symbol(), "IBC");
         assertEq(address(tokenContract), address(tokenContractAddr));

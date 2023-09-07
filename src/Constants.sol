@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 uint256 constant MIN_LIQUIDITY = 1e15; //0.001
 uint256 constant MIN_SUPPLY = 1e15; //0.001

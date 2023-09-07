@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 import "forge-std/Script.sol";
 import "../src/InverseBondingCurveProxy.sol";
-
+import "forge-std/console2.sol";
 contract DeploymentProxy is Script {
     function setUp() public {}
 
@@ -16,9 +16,8 @@ contract DeploymentProxy is Script {
 
         InverseBondingCurveProxy proxyContract = new InverseBondingCurveProxy(curveContractAddress, "");
 
-        // uint256 supply = 1e18;
-        // uint256 price = 1e18;
-        // curveContract.initialize{value: 2 ether}(supply, price);
+        console2.log("Bonding curve proxy contract address:", address(proxyContract));
+
 
         vm.stopBroadcast();
     }
