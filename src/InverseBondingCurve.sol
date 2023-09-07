@@ -3,7 +3,6 @@ pragma solidity ^0.8.18;
 
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin/utils/math/SignedMath.sol";
 import "oz-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "oz-upgradeable/security/PausableUpgradeable.sol";
 import "oz-upgradeable/access/OwnableUpgradeable.sol";
@@ -28,7 +27,6 @@ contract InverseBondingCurve is
     IInverseBondingCurve
 {
     using FixedPoint for uint256;
-    using SignedMath for int256;
     using SafeERC20 for IERC20;
     /// ERRORS ///
 
@@ -39,16 +37,16 @@ contract InverseBondingCurve is
         address indexed recipient,
         uint256 amountIn,
         uint256 amountOut,
-        int256 newParameterK,
-        uint256 newParameterM
+        uint256 newParameterUtilization,
+        uint256 newParameterInvariant
     );
     event LiquidityRemoved(
         address indexed from,
         address indexed recipient,
         uint256 amountIn,
         uint256 amountOut,
-        int256 newParameterK,
-        uint256 newParameterM
+        uint256 newParameterUtilization,
+        uint256 newParameterInvariant
     );
 
     event LiquidityStaked(address indexed from, uint256 amount);
@@ -65,14 +63,14 @@ contract InverseBondingCurve is
     event FeeOwnerChanged(address feeOwner);
 
     /// STATE VARIABLES ///
-    address _protocolFeeOwner;
+    address private _protocolFeeOwner;
     //TODO: there will be tiny errors accumulated and some balance left after user claim reward,
     // need to handle this properly to protocol
-    uint256 _protocolFee;
-    uint256 _totalStaked;
+    uint256 private _protocolFee;
+    uint256 private _totalStaked;
 
-    int256 private _parameterK;
-    uint256 private _parameterM;
+    uint256 private _parameterInvariant;
+    uint256 private _parameterUtilization;
     uint256 private _globalLpFeeIndex;
     uint256 private _globalStakingFeeIndex;
 
@@ -121,9 +119,9 @@ contract InverseBondingCurve is
         _inverseToken = IInverseBondingCurveToken(inverseTokenContractAddress);
         _protocolFeeOwner = protocolFeeOwner;
 
-        _parameterK = ONE_INT - int256(supply.mulDown(price).divDown(msg.value));
-        require(_parameterK > 0 && _parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
-        _parameterM = price.mulDown(supply.pow(_parameterK));
+        _parameterUtilization = price.mulDown(supply).divDown(msg.value);
+        require(_parameterUtilization < ONE_UINT, ERR_PARAM_ZERO);
+        _parameterInvariant = msg.value.divDown(supply.powDown(_parameterUtilization));
 
         _updateLpReward(msg.sender);
         // mint LP token
@@ -132,8 +130,8 @@ contract InverseBondingCurve is
         _inverseToken.mint(msg.sender, supply);
 
         emit FeeOwnerChanged(protocolFeeOwner);
-        emit LiquidityAdded(msg.sender, msg.sender, msg.value, supply, _parameterK, _parameterM);
-    }   
+        emit LiquidityAdded(msg.sender, msg.sender, msg.value, supply, _parameterUtilization, _parameterInvariant);
+    }
 
     function updateFeeConfig(uint256 lpFee, uint256 stakingFee, uint256 protocolFee) external onlyOwner {
         require((lpFee + stakingFee + protocolFee) < 5e17, ERR_FEE_PERCENT_OUT_OF_RANGE);
@@ -170,17 +168,18 @@ contract InverseBondingCurve is
         require(currentPrice >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentBalance = address(this).balance;
-        uint256 mintToken = totalSupply().mulDown(msg.value).divDown(
-            currentBalance.sub(msg.value).sub(currentIbcSupply.mulDown(currentPrice))
-        );
+        uint256 previousBalance = currentBalance - msg.value;
+        uint256 mintToken =
+            totalSupply().mulDown(msg.value).divDown(ONE_UINT.sub(_parameterUtilization).mulDown(previousBalance));
 
         _updateLpReward(recipient);
         _mint(recipient, mintToken);
-        _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(currentBalance));
-        require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
-        _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
 
-        emit LiquidityAdded(msg.sender, recipient, msg.value, mintToken, _parameterK, _parameterM);
+        _parameterUtilization = previousBalance.mulDown(_parameterUtilization).divDown(currentBalance);
+        require(_parameterUtilization < ONE_UINT, ERR_PARAM_ZERO);
+        _parameterInvariant = currentBalance.divDown(currentIbcSupply.powDown(_parameterUtilization));
+
+        emit LiquidityAdded(msg.sender, recipient, msg.value, mintToken, _parameterUtilization, _parameterInvariant);
     }
 
     function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external whenNotPaused {
@@ -193,19 +192,21 @@ contract InverseBondingCurve is
 
         uint256 currentBalance = address(this).balance;
         uint256 returnLiquidity =
-            amount.mulDown(currentBalance.sub(currentIbcSupply.mulDown(currentPrice))).divDown(totalSupply());
+            currentBalance.mulDown(ONE_UINT.sub(_parameterUtilization)).mulDown(amount).divDown(totalSupply());
+
+        uint256 newBalance = currentBalance - returnLiquidity;
+        _parameterUtilization = currentBalance.mulDown(_parameterUtilization).divDown(newBalance);
+        _parameterInvariant = newBalance.divDown(currentIbcSupply.powDown(_parameterUtilization));
 
         _updateLpReward(msg.sender);
         _burn(msg.sender, amount);
 
-        uint256 newBalance = currentBalance - returnLiquidity;
-        _parameterK = ONE_INT - int256((currentPrice.mulDown(currentIbcSupply)).divDown(newBalance));
-        require(_parameterK < ONE_INT, ERR_PARAM_UPDATE_FAIL);
-        _parameterM = currentPrice.mulDown(currentIbcSupply.pow(_parameterK));
         (bool sent,) = recipient.call{value: returnLiquidity}("");
         require(sent, "Failed to send Ether");
 
-        emit LiquidityRemoved(msg.sender, recipient, amount, returnLiquidity, _parameterK, _parameterM);
+        emit LiquidityRemoved(
+            msg.sender, recipient, amount, returnLiquidity, _parameterUtilization, _parameterInvariant
+        );
     }
 
     function _calculateAndUpdateFee(uint256 tokenAmount) private returns (uint256 totalFee) {
@@ -229,13 +230,14 @@ contract InverseBondingCurve is
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
         require(msg.value > MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
 
-        uint256 newSupply = getSupplyFromLiquidity(address(this).balance);
-        uint256 newToken = newSupply - _inverseToken.totalSupply();
+        uint256 newToken = _calcMintToken(msg.value);
 
         uint256 fee = _calculateAndUpdateFee(newToken);
-        // uint256 fee = newToken.mulDown(_lpFeePercent);
         uint256 mintToken = newToken.sub(fee);
         require(msg.value.divDown(mintToken) <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
+        require(
+            _isInvariantChanged(address(this).balance, _inverseToken.totalSupply() + newToken), ERR_INVARIANT_CHANGED
+        );
 
         // _globalLpFeeIndex += fee.divDown(totalSupply());
         _inverseToken.mint(recipient, mintToken);
@@ -250,15 +252,17 @@ contract InverseBondingCurve is
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
 
         uint256 fee = _calculateAndUpdateFee(amount);
-        // uint256 fee = amount.mulDown(_lpFeePercent);
         uint256 burnToken = amount.sub(fee);
-        uint256 newLiquidity = getLiquidityFromSupply(_inverseToken.totalSupply().sub(burnToken));
-        uint256 returnLiquidity = address(this).balance - newLiquidity;
+
+        uint256 returnLiquidity = _calcBurnLiquidity(burnToken);
 
         require(returnLiquidity.divDown(burnToken) >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
+        require(
+            _isInvariantChanged(address(this).balance - returnLiquidity, _inverseToken.totalSupply() - burnToken),
+            ERR_INVARIANT_CHANGED
+        );
 
         // Change state
-        // _globalLpFeeIndex += fee.divDown(totalSupply());
         _inverseToken.burnFrom(msg.sender, burnToken);
         IERC20(_inverseToken).safeTransferFrom(msg.sender, address(this), fee);
 
@@ -324,18 +328,28 @@ contract InverseBondingCurve is
     }
 
     function priceOf(uint256 supply) public view returns (uint256) {
-        return _parameterM.divDown(supply.pow(_parameterK));
+        return _parameterInvariant.mulDown(_parameterUtilization).divDown(
+            supply.powDown(ONE_UINT.sub(_parameterUtilization))
+        );
     }
 
-    function getLiquidityFromSupply(uint256 supply) public view returns (uint256) {
-        uint256 oneMinusK = uint256(ONE_INT - _parameterK);
-        return _parameterM.mulDown(supply.powDown(oneMinusK)).divDown(oneMinusK);
+    function _calcMintToken(uint256 amount) private view returns (uint256) {
+        uint256 currentBalance = address(this).balance;
+        uint256 previousBalance = currentBalance - amount;
+        uint256 currentSupply = _inverseToken.totalSupply();
+
+        return currentBalance.divDown(previousBalance).powDown(ONE_UINT.divDown(_parameterUtilization)).mulDown(
+            currentSupply
+        ) - currentSupply;
     }
 
-    function getSupplyFromLiquidity(uint256 liquidity) public view returns (uint256) {
-        uint256 oneMinusK = uint256(ONE_INT - _parameterK);
+    function _calcBurnLiquidity(uint256 amount) private view returns (uint256) {
+        uint256 currentSupply = _inverseToken.totalSupply();
+        uint256 currentBalance = address(this).balance;
 
-        return liquidity.mulDown(oneMinusK).divDown(_parameterM).powDown(ONE_UINT.divDown(oneMinusK));
+        return currentBalance.sub(
+            (currentSupply.sub(amount).divDown(currentSupply)).powDown(_parameterUtilization).mulDown(currentBalance)
+        );
     }
 
     function inverseTokenAddress() external view returns (address) {
@@ -344,7 +358,8 @@ contract InverseBondingCurve is
 
     function curveParameters() external view returns (CurveParameter memory parameters) {
         uint256 supply = _inverseToken.totalSupply();
-        return CurveParameter(address(this).balance, supply, priceOf(supply), _parameterK, _parameterM);
+        return
+            CurveParameter(address(this).balance, supply, priceOf(supply), _parameterInvariant, _parameterUtilization);
     }
 
     function feeConfig() external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee) {
@@ -382,6 +397,13 @@ contract InverseBondingCurve is
 
     function getImplementation() external view returns (address) {
         return _getImplementation();
+    }
+
+    function _isInvariantChanged(uint256 newLiquidity, uint256 newSupply) internal view returns (bool) {
+        uint256 invariant = newLiquidity.divDown(newSupply.powDown(_parameterUtilization));
+
+        return (invariant > _parameterInvariant - ALLOWED_INVARIANT_CHANGE)
+            && (invariant < _parameterInvariant + ALLOWED_INVARIANT_CHANGE);
     }
 
     function _claimLpReward(address recipient, RewardType rewardType) private {

@@ -12,8 +12,8 @@ contract InitializeCurve is Script {
         string memory seedPhrase = vm.readFile(".secret");
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
         address feeOwner = vm.addr(privateKey);
-        address proxyContractAddress = vm.parseAddress("0xfc073209b7936a771f77f63d42019a3a93311869");
-        address ibcTokenContract = vm.parseAddress("0xb4e9a5bc64dc07f890367f72941403eed7fadcbb");
+        address proxyContractAddress = vm.parseAddress("0x3818eab6ca8bf427222bfacfa706c514145f4104");
+        address ibcTokenContract = vm.parseAddress("0x4a351c6ae3249499cbb50e8fe6566e2615386da8");
         vm.startBroadcast(privateKey);
 
         InverseBondingCurve curveContract = InverseBondingCurve(proxyContractAddress);
