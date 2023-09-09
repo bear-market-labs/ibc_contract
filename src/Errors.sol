@@ -18,3 +18,7 @@ string constant ERR_PRICE_OUT_OF_LIMIT = "Price out of limit";
 string constant ERR_FEE_PERCENT_OUT_OF_RANGE = "Fee percent should be within[0.0001, 0.5] -> [1e14, 5e17]";
 
 string constant ERR_INVARIANT_CHANGED = "Curve invarint changed out of range";
+
+string constant ERR_ONLY_OWNER_ALLOWED = "Only protocol fee owner allowed";
+
+string constant ERR_FAIL_SEND_ETHER = "Failed to send Ether";
