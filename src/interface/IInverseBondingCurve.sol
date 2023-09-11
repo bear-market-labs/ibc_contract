@@ -28,7 +28,22 @@ interface IInverseBondingCurve {
 
     function curveParameters() external view returns (CurveParameter memory parameters);
 
-    function feeConfig() external view returns (uint256[MAX_ACTION_COUNT] memory lpFee, uint256[MAX_ACTION_COUNT] memory stakingFee, uint256[MAX_ACTION_COUNT] memory protocolFee);
+    function feeConfig()
+        external
+        view
+        returns (
+            uint256[MAX_ACTION_COUNT] memory lpFee,
+            uint256[MAX_ACTION_COUNT] memory stakingFee,
+            uint256[MAX_ACTION_COUNT] memory protocolFee
+        );
 
-    function rewardOf(address recipient) external view returns (uint256 inverseTokenForLp, uint256 inverseTokenForStaking, uint256 reserveForLp, uint256 reserveForStaking);
+    function rewardOf(address recipient)
+        external
+        view
+        returns (
+            uint256 inverseTokenForLp,
+            uint256 inverseTokenForStaking,
+            uint256 reserveForLp,
+            uint256 reserveForStaking
+        );
 }

@@ -8,5 +8,5 @@ struct FeeState {
     mapping(address => uint256) userLpFeeIndexState;
     mapping(address => uint256) userLpPendingReward;
     mapping(address => uint256) userStakingFeeIndexState;
-    mapping(address => uint256) userStakingPendingReward;    
+    mapping(address => uint256) userStakingPendingReward;
 }
