@@ -7,6 +7,7 @@ import "../src/InverseBondingCurveProxy.sol";
 import "../src/InverseBondingCurveToken.sol";
 import "forge-std/console2.sol";
 
+//TODO: add upgradable related test
 contract InverseBondingCurveProxyTest is Test {
     InverseBondingCurve public curveContract;
     InverseBondingCurveToken tokenContract;
@@ -22,7 +23,7 @@ contract InverseBondingCurveProxyTest is Test {
         InverseBondingCurveProxy proxy = new InverseBondingCurveProxy(address(curveContract), "");
         tokenContract = new InverseBondingCurveToken(address(proxy), "IBC", "IBC");
         curveContract = InverseBondingCurve(address(proxy));
-        curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
+        curveContract.initialize(2e18, 1e18, 1e18, address(tokenContract), otherRecipient);
     }
 
     function testSymbol() public {

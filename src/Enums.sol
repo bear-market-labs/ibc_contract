@@ -6,3 +6,15 @@ enum RewardType {
     STAKING, // 1
     PROTOCOL // 2
 }
+
+enum ActionType {
+    BUY_TOKEN,
+    SELL_TOKEN,
+    ADD_LIQUIDITY,
+    REMOVE_LIQUIDITY
+}
+
+enum FeeType {
+    INVERSE_TOKEN,
+    RESERVE
+}

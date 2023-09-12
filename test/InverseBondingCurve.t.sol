@@ -7,7 +7,12 @@ import "../src/InverseBondingCurveToken.sol";
 import "../src/InverseBondingCurveProxy.sol";
 import "forge-std/console2.sol";
 
+//TODO: add pause/unpause test
+//TODO: add fuzzy test for major interactions
+//TODO: add selfdestruct attack test
 contract InverseBondingCurveTest is Test {
+    using FixedPoint for uint256;
+
     InverseBondingCurve curveContract;
     InverseBondingCurveToken tokenContract;
 
@@ -17,14 +22,19 @@ contract InverseBondingCurveTest is Test {
     address otherRecipient = vm.parseAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
     uint256 feePercent = 3e15;
 
+    uint256 LIQUIDITY_2ETH_BEFOR_FEE = 2006018054162487000; // 2e18 / 0.997, to make actual liquidity 2eth
+
     function assertEqWithError(uint256 a, uint256 b) internal {
-        if (a < b - ALLOWED_ERROR || a > b + ALLOWED_ERROR) {
+        uint256 diff = a > b ? a - b : b - a;
+        if (diff > ALLOWED_ERROR) {
             emit log("Error: a == b not satisfied [decimal int]");
             emit log_named_decimal_uint("      Left", a, 18);
             emit log_named_decimal_uint("     Right", b, 18);
             fail();
         }
     }
+
+    receive() external payable {}
 
     function setUp() public {
         curveContract = new InverseBondingCurve();
@@ -34,7 +44,7 @@ contract InverseBondingCurveTest is Test {
         InverseBondingCurveProxy proxy = new InverseBondingCurveProxy(address(curveContract), "");
         tokenContract = new InverseBondingCurveToken(address(proxy), "IBC", "IBC");
         curveContract = InverseBondingCurve(address(proxy));
-        curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
+        curveContract.initialize(2e18, 1e18, 1e18, address(tokenContract), otherRecipient);
     }
 
     function testSymbol() public {
@@ -48,18 +58,22 @@ contract InverseBondingCurveTest is Test {
     // }
 
     function testSetupFeePercent() public {
-        (uint256 lpFee, uint256 stakingFee, uint256 protocolFee) = curveContract.feeConfig();
-        assertEq(lpFee, 1e15);
-        assertEq(stakingFee, 1e15);
-        assertEq(protocolFee, 1e15);
+        (
+            uint256[MAX_ACTION_COUNT] memory lpFee,
+            uint256[MAX_ACTION_COUNT] memory stakingFee,
+            uint256[MAX_ACTION_COUNT] memory protocolFee
+        ) = curveContract.feeConfig();
+        assertEq(lpFee[uint256(ActionType.REMOVE_LIQUIDITY)], 1e15);
+        assertEq(stakingFee[uint256(ActionType.REMOVE_LIQUIDITY)], 1e15);
+        assertEq(protocolFee[uint256(ActionType.REMOVE_LIQUIDITY)], 1e15);
 
-        curveContract.updateFeeConfig(2e15, 3e15, 4e15);
+        curveContract.updateFeeConfig(ActionType.REMOVE_LIQUIDITY, 2e15, 3e15, 4e15);
 
         (lpFee, stakingFee, protocolFee) = curveContract.feeConfig();
 
-        assertEq(lpFee, 2e15);
-        assertEq(stakingFee, 3e15);
-        assertEq(protocolFee, 4e15);
+        assertEq(lpFee[uint256(ActionType.REMOVE_LIQUIDITY)], 2e15);
+        assertEq(stakingFee[uint256(ActionType.REMOVE_LIQUIDITY)], 3e15);
+        assertEq(protocolFee[uint256(ActionType.REMOVE_LIQUIDITY)], 4e15);
     }
 
     // function testRevertIfNotInitialized() public {
@@ -83,12 +97,16 @@ contract InverseBondingCurveTest is Test {
         // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
 
         uint256 price = curveContract.priceOf(1e18);
+        console2.log(price);
         CurveParameter memory param = curveContract.curveParameters();
+        console2.log(param.price);
         // assert(param.parameterM > 1e18 - ALLOWED_ERROR && param.parameterM < 1e18 + ALLOWED_ERROR);
 
         assertEqWithError(price, 1e18);
-        assertEqWithError(tokenContract.balanceOf(recipient), 1e18);
-        assertEqWithError(curveContract.balanceOf(recipient), 2e18);
+        assertEqWithError(tokenContract.balanceOf(recipient), 0);
+        assertEqWithError(curveContract.balanceOf(recipient), 0);
+        assertEqWithError(param.virtualReserve, param.reserve);
+        assertEqWithError(param.virtualSupply, param.supply);
 
         // assertEqWithError(param.parameterK, 5e17);
     }
@@ -101,7 +119,7 @@ contract InverseBondingCurveTest is Test {
         console2.log("curve param supply:", param.supply);
         console2.log("LP supply:", curveContract.totalSupply());
 
-        curveContract.addLiquidity{value: 2 ether}(recipient, 1e18);
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
 
         param = curveContract.curveParameters();
         console2.log("curve param u:", param.parameterUtilization);
@@ -113,46 +131,46 @@ contract InverseBondingCurveTest is Test {
 
         // assert(param.parameterM > 1e18 - ALLOWED_ERROR && param.parameterM < 1e18 + ALLOWED_ERROR);
         // assert(param.parameterK > 75e16 - int256(ALLOWED_ERROR) && param.parameterK < 75e16 + int256(ALLOWED_ERROR));
-        assert(price > 1e18 - ALLOWED_ERROR && price < 1e18 + ALLOWED_ERROR);
+
+        assertEqWithError(price, 1e18);
         console2.log(price);
         console2.log(curveContract.totalSupply());
 
-        assertEq(tokenContract.balanceOf(recipient), 1e18);
-        assertEq(curveContract.balanceOf(recipient), 6e18);
+        assertEqWithError(tokenContract.balanceOf(recipient), 0);
+        assertEqWithError(curveContract.balanceOf(recipient), 4e18);
     }
 
     function testRemoveLiquidity() public {
         // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
-        curveContract.addLiquidity{value: 2 ether}(recipient, 1e18);
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
 
         uint256 balanceBefore = otherRecipient.balance;
 
         // vm.startPrank(recipient);
         // vm.deal(recipient, 1000 ether);
 
-        curveContract.removeLiquidity(otherRecipient, 4e18, 1e18 + ALLOWED_ERROR);
+        uint256 lpAmount = curveContract.balanceOf(recipient);
+        console2.log(curveContract.totalSupply());
+        console2.log(lpAmount);
+
+        curveContract.removeLiquidity(otherRecipient, lpAmount, 1e18 + ALLOWED_ERROR);
 
         uint256 balanceAfter = otherRecipient.balance;
 
         uint256 price = curveContract.priceOf(1e18);
         CurveParameter memory param = curveContract.curveParameters();
-        // console2.log(param.parameterK);
-        // console2.log(param.parameterM);
-        // assert(param.parameterM > 1e18 - ALLOWED_ERROR && param.parameterM < 1e18 + ALLOWED_ERROR);
-        // assert(param.parameterK > 5e17 - int256(ALLOWED_ERROR) && param.parameterK < 5e17 + int256(ALLOWED_ERROR));
         console2.log(price);
         assertEqWithError(price, 1e18);
 
-        assertEqWithError(tokenContract.balanceOf(recipient), 1e18);
-        assertEqWithError(curveContract.balanceOf(recipient), 2e18);
-        assertEqWithError(balanceAfter - balanceBefore, 2e18);
+        assertEqWithError(tokenContract.balanceOf(recipient), 0);
+        assertEqWithError(curveContract.balanceOf(recipient), 0);
+        assertEqWithError(balanceAfter - balanceBefore, uint256(2e18).mulDown(ONE_UINT.sub(FEE_PERCENT.mulDown(3e18))));
     }
 
     function testBuyTokens() public {
         // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
 
         // curveContract.addLiquidity{value: 2 ether}(recipient, 1e18);
-
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
         curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
 
@@ -163,7 +181,7 @@ contract InverseBondingCurveTest is Test {
         console2.log("balanceBefore", balanceBefore);
         console2.log("balanceAfter ", balanceAfter);
 
-        assert(balanceChange > 124625e13 - ALLOWED_ERROR && balanceChange < 124625e13 + ALLOWED_ERROR);
+        assertEqWithError(balanceChange, 124625e13);
     }
 
     function testSellTokens() public {
@@ -187,53 +205,67 @@ contract InverseBondingCurveTest is Test {
         uint256 balanceOut = 761250348967084500;
 
         uint256 ethBalanceChange = ethBalanceAfter - ethBalanceBefore;
-        assert(ethBalanceChange > balanceOut - ALLOWED_ERROR && ethBalanceChange < balanceOut + ALLOWED_ERROR);
+        assertEqWithError(ethBalanceChange, balanceOut);
     }
 
     function testFeeAccumulate() public {
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
         // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
 
         // curveContract.addLiquidity{value: 2 ether}(recipient, 1e18);
 
         curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        console2.log(tokenContract.balanceOf(otherRecipient));
 
         uint256 feeBalance = tokenContract.balanceOf(address(curveContract));
 
-        uint256 tokenOut = 124625e13;
+        uint256 tokenOut = tokenContract.balanceOf(otherRecipient);
         uint256 fee = (tokenOut * feePercent) / (1e18 - feePercent);
 
-        assert(feeBalance >= fee - ALLOWED_ERROR && feeBalance <= fee + ALLOWED_ERROR);
-
+        
+        assertEqWithError(feeBalance, fee);
+        vm.startPrank(otherRecipient);
         tokenContract.approve(address(curveContract), 1e18);
         curveContract.sellTokens(otherRecipient, 1e18, 1e17);
+        vm.stopPrank();
 
         feeBalance = tokenContract.balanceOf(address(curveContract));
         fee += 1e18 * feePercent / 1e18;
 
-        assert(feeBalance >= fee - ALLOWED_ERROR && feeBalance <= fee + ALLOWED_ERROR);
-
+        assertEqWithError(feeBalance, fee);
+        (uint256 lpReward,,,) = curveContract.rewardOf(recipient);
+        console2.log("reward:", lpReward);
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
-        curveContract.claimReward(otherRecipient, RewardType.LP);
+        curveContract.claimReward(otherRecipient);
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
 
-        assertLe(feeBalance - (balanceAfter - balanceBefore) * 3, ALLOWED_ERROR);
-        assertEq(tokenContract.balanceOf(address(curveContract)), feeBalance - (balanceAfter - balanceBefore));
+        console2.log("balanceBefore",balanceBefore);
+        console2.log("balanceAfter",balanceAfter);
+        console2.log("feeBalance",feeBalance);
+        console2.log("balance of curve",tokenContract.balanceOf(address(curveContract)));
+
+        assertEqWithError(feeBalance, (balanceAfter - balanceBefore)*3);
+        assertEqWithError(tokenContract.balanceOf(address(curveContract)), feeBalance - (balanceAfter - balanceBefore));
     }
 
     function testClaimRewardFeePortion() public {
         // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 1e18);
+        
 
-        curveContract.addLiquidity{value: 2 ether}(otherRecipient, 1e18);
+        uint256 feeBalanceBefore = tokenContract.balanceOf(address(curveContract));
+
         curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        uint256 feeBalanceAfter = tokenContract.balanceOf(address(curveContract));
+        uint256 totalFee = feeBalanceAfter - feeBalanceBefore;
 
-        uint256 feeBalance = tokenContract.balanceOf(address(curveContract));
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
 
-        curveContract.claimReward(otherRecipient, RewardType.LP);
+        curveContract.claimReward(otherRecipient);
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
 
-        assertLe(feeBalance * 1 / 9 - (balanceAfter - balanceBefore), ALLOWED_ERROR);
-        assertLe(tokenContract.balanceOf(address(curveContract)) - feeBalance * 8 / 9, ALLOWED_ERROR);
+        assertEqWithError(totalFee, (balanceAfter - balanceBefore) * 6);
     }
 
     function testClaimRewardLiquidityChange() public {
@@ -244,7 +276,7 @@ contract InverseBondingCurveTest is Test {
         vm.deal(thirdRecipient, 1000 ether);
 
         vm.startPrank(otherRecipient);
-        curveContract.addLiquidity{value: 2 ether}(otherRecipient, 0);
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 0);
         vm.stopPrank();
 
         console2.log("lp balance:", curveContract.balanceOf(address(this)));
@@ -253,19 +285,17 @@ contract InverseBondingCurveTest is Test {
         console2.log("total fee balance before buy:", tokenContract.balanceOf(address(curveContract)));
 
         curveContract.buyTokens{value: 2 ether}(otherRecipient, 1e18);
-        console2.log("self claimable:", curveContract.rewardOf(address(this), RewardType.LP));
-        console2.log("otherRecipient claimable:", curveContract.rewardOf(address(otherRecipient), RewardType.LP));
 
         vm.startPrank(otherRecipient);
         tokenContract.transfer(thirdRecipient, 1e18);
         vm.stopPrank();
 
         console2.log("total fee balance:", tokenContract.balanceOf(address(curveContract)));
-        curveContract.claimReward(recipient, RewardType.LP);
+        curveContract.claimReward(recipient);
 
         console2.log("total fee balance after claim:", tokenContract.balanceOf(address(curveContract)));
         vm.startPrank(otherRecipient);
-        curveContract.claimReward(otherRecipient, RewardType.LP);
+        curveContract.claimReward(otherRecipient);
         vm.stopPrank();
 
         console2.log("total fee balance after claim:", tokenContract.balanceOf(address(curveContract)));
@@ -293,14 +323,14 @@ contract InverseBondingCurveTest is Test {
 
         vm.startPrank(otherRecipient);
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
-        curveContract.claimReward(otherRecipient, RewardType.LP);
+        curveContract.claimReward(otherRecipient);
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
         uint256 otherRecipientFee = balanceAfter - balanceBefore;
         vm.stopPrank();
 
         vm.startPrank(thirdRecipient);
         balanceBefore = tokenContract.balanceOf(thirdRecipient);
-        curveContract.claimReward(thirdRecipient, RewardType.LP);
+        curveContract.claimReward(thirdRecipient);
         balanceAfter = tokenContract.balanceOf(thirdRecipient);
         uint256 thirdRecipientFee = balanceAfter - balanceBefore;
         uint256 secondSellFeeForthirdRecipient =
@@ -329,11 +359,11 @@ contract InverseBondingCurveTest is Test {
         tokenContract.transfer(thirdRecipient, 2e18);
         vm.stopPrank();
 
-        curveContract.claimReward(recipient, RewardType.LP);
+        curveContract.claimReward(recipient);
         vm.startPrank(otherRecipient);
         tokenContract.approve(address(curveContract), 1e18);
         curveContract.stake(1e18);
-        curveContract.claimReward(otherRecipient, RewardType.LP);
+        curveContract.claimReward(otherRecipient);
         vm.stopPrank();
 
         vm.startPrank(otherRecipient);
@@ -351,14 +381,14 @@ contract InverseBondingCurveTest is Test {
 
         vm.startPrank(otherRecipient);
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
-        curveContract.claimReward(otherRecipient, RewardType.STAKING);
+        curveContract.claimReward(otherRecipient);
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
         uint256 otherRecipientFee = balanceAfter - balanceBefore;
         vm.stopPrank();
 
         vm.startPrank(thirdRecipient);
         balanceBefore = tokenContract.balanceOf(thirdRecipient);
-        curveContract.claimReward(thirdRecipient, RewardType.STAKING);
+        curveContract.claimReward(thirdRecipient);
         balanceAfter = tokenContract.balanceOf(thirdRecipient);
         uint256 thirdRecipientFee = balanceAfter - balanceBefore;
         vm.stopPrank();
@@ -371,21 +401,33 @@ contract InverseBondingCurveTest is Test {
     }
 
     function testLpTransfers() public {
-        assertEq(curveContract.balanceOf(recipient), 2e18);
-        assertEq(curveContract.rewardOf(recipient, RewardType.LP), 0);
+        // assertEq(curveContract.balanceOf(recipient), 2e18);
+
+        // vm.deal(otherRecipient, 1000 ether);
+        // vm.deal(thirdRecipient, 1000 ether);
+
+        // vm.startPrank(otherRecipient);
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 0);
+        // vm.stopPrank();
+
+        (uint256 reward,,,) = curveContract.rewardOf(recipient);
+        assertEq(reward, 0);
+
 
         //perform mints to generate lp fees
-        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 2 ether}(otherRecipient, 1e18);
 
         //transfer from recipient to otherRecipient
         //confirm sender/recipient's reward state
         vm.startPrank(recipient);
-        curveContract.transfer(otherRecipient, 2e18);
+        curveContract.transfer(otherRecipient, curveContract.balanceOf(recipient));
         vm.stopPrank();
 
-        uint256 senderLpReward = curveContract.rewardOf(recipient, RewardType.LP);
-        uint256 recipientLpReward = curveContract.rewardOf(otherRecipient, RewardType.LP);
-        assertEqWithError(senderLpReward, 1250000000000044);
+        (uint256 senderLpReward,,,) = curveContract.rewardOf(recipient);
+        (uint256 recipientLpReward,,,) = curveContract.rewardOf(otherRecipient);
+        // uint256 senderLpReward = curveContract.rewardOf(recipient)[0];
+        // uint256 recipientLpReward = curveContract.rewardOf(otherRecipient)[0];
+        assertEqWithError(senderLpReward, 12187500000000000/3);
         assert(recipientLpReward == 0);
 
         //perform more mints to generate lp fees
@@ -401,9 +443,12 @@ contract InverseBondingCurveTest is Test {
         curveContract.transferFrom(otherRecipient, recipient, 2e18);
         vm.stopPrank();
 
-        uint256 senderLpReward2 = curveContract.rewardOf(otherRecipient, RewardType.LP);
-        uint256 recipientLpReward2 = curveContract.rewardOf(recipient, RewardType.LP);
-        assert(senderLpReward == recipientLpReward2);
-        assertEqWithError(senderLpReward2, 1750000000000034);
+        // uint256 senderLpReward2 = curveContract.rewardOf(otherRecipient);
+        // uint256 recipientLpReward2 = curveContract.rewardOf(otherRecipient);
+
+        (uint256 senderLpReward2,,,) = curveContract.rewardOf(otherRecipient);
+        (uint256 recipientLpReward2,,,) = curveContract.rewardOf(recipient);
+        assertEqWithError(senderLpReward, recipientLpReward2);
+        assertEqWithError(senderLpReward2, 12949218750000000/3);
     }
 }
