@@ -20,7 +20,7 @@ contract InitializeCurve is Script {
 
         uint256 supply = 1e18;
         uint256 price = 1e18;
-        curveContract.initialize{value: 2 ether}(supply, price, ibcTokenContract, feeOwner);
+        curveContract.initialize(2e18, supply, price, ibcTokenContract, feeOwner);
 
         vm.stopBroadcast();
     }
