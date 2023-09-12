@@ -7,6 +7,14 @@ import "../src/InverseBondingCurveProxy.sol";
 import "../src/InverseBondingCurveToken.sol";
 import "forge-std/console2.sol";
 
+contract InverseBondingCurveV2 is InverseBondingCurve {
+    uint256 _newValue = 2;
+
+    function newMethod() public returns (uint256) {
+        return _newValue;
+    }
+}
+
 //TODO: add upgradable related test
 contract InverseBondingCurveProxyTest is Test {
     InverseBondingCurve public curveContract;
@@ -27,6 +35,7 @@ contract InverseBondingCurveProxyTest is Test {
     }
 
     function testSymbol() public {
+        console2.log("Symbol", curveContract.symbol());
         assertEq(curveContract.symbol(), "IBCLP");
     }
 
@@ -35,5 +44,56 @@ contract InverseBondingCurveProxyTest is Test {
 
         assertEq(tokenContract.symbol(), "IBC");
         assertEq(address(tokenContract), address(tokenContractAddr));
+    }
+
+    function testRevertIfExternalMint() public {
+        address from = vm.addr(2);
+        address to = vm.addr(3);
+        vm.startPrank(from);
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        tokenContract.mint(to, 1);
+        vm.stopPrank();
+    }
+
+    function testRevertIfExternalBurn() public {
+        address from = vm.addr(2);
+        address to = vm.addr(3);
+        vm.startPrank(from);
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        tokenContract.burnFrom(to, 1);
+        vm.stopPrank();
+    }
+
+    function testRevertReInitialize() public {
+        vm.expectRevert(bytes("Initializable: contract is already initialized"));
+        curveContract.initialize(2e18, 1e18, 1e18, address(tokenContract), otherRecipient);
+    }
+
+    function testRevertSendingEtherToCurve() public {
+        (bool sent,) = address(curveContract).call{value: 1 ether}("");
+
+        assertEq(sent, false);
+    }
+
+    function testUpgrade() public {
+        InverseBondingCurveV2 contractV2 = new InverseBondingCurveV2();
+        (bool success, bytes memory data) = address(curveContract).call(abi.encodeWithSignature("newMethod()"));
+        assertEq(success, false);
+        curveContract.upgradeTo(address(contractV2));
+        (success, data) = address(curveContract).call(abi.encodeWithSignature("newMethod()"));
+        assertEq(success, true);
+        console2.log(success);
+        console2.logBytes(data);
+        // InverseBondingCurveV2 v2 = InverseBondingCurveV2(curveContract);
+        // console2.log(v2.newMethod());
+    }
+
+    function testRevertIfUpgradeNotFromProxy() public {
+        address from = vm.addr(2);
+        InverseBondingCurveV2 contractV2 = new InverseBondingCurveV2();
+        vm.startPrank(from);
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        curveContract.upgradeTo(address(contractV2));
+        vm.stopPrank();
     }
 }

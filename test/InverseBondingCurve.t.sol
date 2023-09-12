@@ -21,6 +21,7 @@ contract InverseBondingCurveTest is Test {
     address recipient = address(this);
     address otherRecipient = vm.parseAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
     uint256 feePercent = 3e15;
+    address nonOwner = vm.addr(1);
 
     uint256 LIQUIDITY_2ETH_BEFOR_FEE = 2006018054162487000; // 2e18 / 0.997, to make actual liquidity 2eth
 
@@ -51,11 +52,13 @@ contract InverseBondingCurveTest is Test {
         assertEq(curveContract.symbol(), "IBCLP");
     }
 
-    // function testInverseTokenSymbol() public {
-    //     InverseBondingCurveToken tokenContract = InverseBondingCurveToken(curveContract.inverseTokenAddress());
+    function testInverseTokenSymbol() public {
+        assertEq(tokenContract.symbol(), "IBC");
+    }
 
-    //     assertEq(tokenContract.symbol(), "IBC");
-    // }
+    function testLPTokenSymbol() public {
+        assertEq(curveContract.symbol(), "IBCLP");
+    }
 
     function testSetupFeePercent() public {
         (
@@ -76,43 +79,22 @@ contract InverseBondingCurveTest is Test {
         assertEq(protocolFee[uint256(ActionType.REMOVE_LIQUIDITY)], 4e15);
     }
 
-    // function testRevertIfNotInitialized() public {
-    //     vm.expectRevert(bytes(ERR_POOL_NOT_INITIALIZED));
-    //     curveContract.addLiquidity(address(this), 1e18);
-
-    //     vm.expectRevert(bytes(ERR_POOL_NOT_INITIALIZED));
-    //     curveContract.removeLiquidity(address(this), 1e18, 1e18);
-
-    //     vm.expectRevert(bytes(ERR_POOL_NOT_INITIALIZED));
-    //     curveContract.claimReward(address(this), RewardType.LP);
-
-    //     vm.expectRevert(bytes(ERR_POOL_NOT_INITIALIZED));
-    //     curveContract.buyTokens(address(this), 1e18);
-
-    //     vm.expectRevert(bytes(ERR_POOL_NOT_INITIALIZED));
-    //     curveContract.sellTokens(address(this), 1e18, 1e18);
-    // }
-
     function testInitialize() public {
-        // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
-
         uint256 price = curveContract.priceOf(1e18);
-        console2.log(price);
         CurveParameter memory param = curveContract.curveParameters();
-        console2.log(param.price);
-        // assert(param.parameterM > 1e18 - ALLOWED_ERROR && param.parameterM < 1e18 + ALLOWED_ERROR);
 
         assertEqWithError(price, 1e18);
         assertEqWithError(tokenContract.balanceOf(recipient), 0);
         assertEqWithError(curveContract.balanceOf(recipient), 0);
         assertEqWithError(param.virtualReserve, param.reserve);
         assertEqWithError(param.virtualSupply, param.supply);
+    }
 
-        // assertEqWithError(param.parameterK, 5e17);
+    function testInverseTokenAddress() public {
+        assertEq(curveContract.inverseTokenAddress(), address(tokenContract));
     }
 
     function testAddLiquidity() public {
-        // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
         CurveParameter memory param = curveContract.curveParameters();
         console2.log("curve param u:", param.parameterUtilization);
         console2.log("curve param i:", param.parameterInvariant);
@@ -222,7 +204,6 @@ contract InverseBondingCurveTest is Test {
         uint256 tokenOut = tokenContract.balanceOf(otherRecipient);
         uint256 fee = (tokenOut * feePercent) / (1e18 - feePercent);
 
-        
         assertEqWithError(feeBalance, fee);
         vm.startPrank(otherRecipient);
         tokenContract.approve(address(curveContract), 1e18);
@@ -239,12 +220,12 @@ contract InverseBondingCurveTest is Test {
         curveContract.claimReward(otherRecipient);
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
 
-        console2.log("balanceBefore",balanceBefore);
-        console2.log("balanceAfter",balanceAfter);
-        console2.log("feeBalance",feeBalance);
-        console2.log("balance of curve",tokenContract.balanceOf(address(curveContract)));
+        console2.log("balanceBefore", balanceBefore);
+        console2.log("balanceAfter", balanceAfter);
+        console2.log("feeBalance", feeBalance);
+        console2.log("balance of curve", tokenContract.balanceOf(address(curveContract)));
 
-        assertEqWithError(feeBalance, (balanceAfter - balanceBefore)*3);
+        assertEqWithError(feeBalance, (balanceAfter - balanceBefore) * 3);
         assertEqWithError(tokenContract.balanceOf(address(curveContract)), feeBalance - (balanceAfter - balanceBefore));
     }
 
@@ -252,7 +233,6 @@ contract InverseBondingCurveTest is Test {
         // curveContract.initialize{value: 2 ether}(1e18, 1e18, address(tokenContract), otherRecipient);
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 1e18);
-        
 
         uint256 feeBalanceBefore = tokenContract.balanceOf(address(curveContract));
 
@@ -413,7 +393,6 @@ contract InverseBondingCurveTest is Test {
         (uint256 reward,,,) = curveContract.rewardOf(recipient);
         assertEq(reward, 0);
 
-
         //perform mints to generate lp fees
         curveContract.buyTokens{value: 2 ether}(otherRecipient, 1e18);
 
@@ -427,7 +406,7 @@ contract InverseBondingCurveTest is Test {
         (uint256 recipientLpReward,,,) = curveContract.rewardOf(otherRecipient);
         // uint256 senderLpReward = curveContract.rewardOf(recipient)[0];
         // uint256 recipientLpReward = curveContract.rewardOf(otherRecipient)[0];
-        assertEqWithError(senderLpReward, 12187500000000000/3);
+        assertEqWithError(senderLpReward, 12187500000000000 / 3);
         assert(recipientLpReward == 0);
 
         //perform more mints to generate lp fees
@@ -449,6 +428,6 @@ contract InverseBondingCurveTest is Test {
         (uint256 senderLpReward2,,,) = curveContract.rewardOf(otherRecipient);
         (uint256 recipientLpReward2,,,) = curveContract.rewardOf(recipient);
         assertEqWithError(senderLpReward, recipientLpReward2);
-        assertEqWithError(senderLpReward2, 12949218750000000/3);
+        assertEqWithError(senderLpReward2, 12949218750000000 / 3);
     }
 }
