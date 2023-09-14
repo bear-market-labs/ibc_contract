@@ -46,4 +46,5 @@ interface IInverseBondingCurve {
             uint256 reserveForLp,
             uint256 reserveForStaking
         );
+    function totalStaked() external view returns (uint256);
 }
