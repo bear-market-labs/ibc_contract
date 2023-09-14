@@ -37,7 +37,8 @@ contract DeploymentProxy is Script {
         address preCalculateProxyAddress = getAddress(byteCode, salt);
         console2.log("Pre-calculated proxy contract address:", preCalculateProxyAddress);
 
-        InverseBondingCurveProxy proxyContract = new InverseBondingCurveProxy{salt: salt}(curveContractAddress, data);
+        //InverseBondingCurveProxy proxyContract = new InverseBondingCurveProxy{salt: salt}(curveContractAddress, data);
+        InverseBondingCurveProxy proxyContract = new InverseBondingCurveProxy(curveContractAddress, data);
 
         console2.log("Bonding curve proxy contract address:", address(proxyContract));
         require(
