@@ -15,7 +15,7 @@ string constant ERR_EMPTY_ADDRESS = "Empty address";
 
 string constant ERR_PRICE_OUT_OF_LIMIT = "Price out of limit";
 
-string constant ERR_FEE_PERCENT_OUT_OF_RANGE = "Fee percent should be within[0.0001, 0.5] -> [1e14, 5e17]";
+string constant ERR_FEE_PERCENT_OUT_OF_RANGE = "Fee percent should be within range";
 
 string constant ERR_INVARIANT_CHANGED = "Curve invarint changed out of range";
 
