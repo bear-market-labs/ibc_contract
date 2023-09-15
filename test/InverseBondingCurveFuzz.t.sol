@@ -70,7 +70,8 @@ contract InverseBondingCurveFuzzTest is Test {
     function testFuzz(uint256 additionalReserve, uint256 buyReserve) private {
         uint256 reserve = 1e21; // 1000
         uint256 supply = 5e24; //
-        uint256 price = 1e14; // 0.0001 ETH
+        uint256 price = 1e14;
+        // 0.0001 ETH
 
         additionalReserve = bound(additionalReserve, 0.001 ether, 1e4 ether);
         buyReserve = bound(buyReserve, 0.001 ether, 1e4 ether);
