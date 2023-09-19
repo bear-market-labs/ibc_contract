@@ -56,8 +56,8 @@ contract InverseBondingCurve is
         uint256 newParameterInvariant
     );
 
-    event LiquidityStaked(address indexed from, uint256 amount);
-    event LiquidityUnstaked(address indexed from, uint256 amount);
+    event TokenStaked(address indexed from, uint256 amount);
+    event TokenUnstaked(address indexed from, uint256 amount);
 
     event TokenBought(address indexed from, address indexed recipient, uint256 amountIn, uint256 amountOut);
 
@@ -284,7 +284,7 @@ contract InverseBondingCurve is
         _totalStaked += amount;
         IERC20(_inverseToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit LiquidityStaked(msg.sender, amount);
+        emit TokenStaked(msg.sender, amount);
     }
 
     function unstake(uint256 amount) external whenNotPaused {
@@ -295,7 +295,7 @@ contract InverseBondingCurve is
         _totalStaked -= amount;
         IERC20(_inverseToken).safeTransfer(msg.sender, amount);
 
-        emit LiquidityUnstaked(msg.sender, amount);
+        emit TokenUnstaked(msg.sender, amount);
     }
 
     function claimReward(address recipient) external whenNotPaused {
