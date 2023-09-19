@@ -64,7 +64,7 @@ contract InverseBondingCurveFuzzTest is Test {
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e19);
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e19, 1e19);
     }
 
     function testFuzz(uint256 additionalReserve, uint256 buyReserve) private {
@@ -81,11 +81,11 @@ contract InverseBondingCurveFuzzTest is Test {
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e19);
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e19, 1e19);
         curveContract.removeLiquidity(recipient, curveContract.balanceOf(recipient), 1e19);
 
         tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
-        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0);
+        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
     }
 
     function testSepecific() private {
@@ -102,6 +102,6 @@ contract InverseBondingCurveFuzzTest is Test {
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e19);
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e19, 1e20);
     }
 }

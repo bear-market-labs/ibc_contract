@@ -13,8 +13,8 @@ contract UpgradeCurve is Script {
         // Put secret in .secret file under contracts folder
         string memory seedPhrase = vm.readFile(".secret");
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
-        address payable proxyContractAddress = payable(vm.parseAddress("0xfc073209b7936a771f77f63d42019a3a93311869"));
-        address newCurveContractAddress = vm.parseAddress("0x8b64968f69e669facc86fa3484fd946f1bbe7c91");
+        address payable proxyContractAddress = payable(vm.parseAddress("0x7a5ec257391817ef241ef8451642cc6b222d4f8c"));
+        address newCurveContractAddress = vm.parseAddress("0xabebe9a2d62af9a89e86eb208b51321e748640c3");
         address oneLiqudityProvider = vm.parseAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
         vm.startBroadcast(privateKey);
 
@@ -27,6 +27,7 @@ contract UpgradeCurve is Script {
         );
         console2.log("IBC token address remain:", curveContract.inverseTokenAddress());
         curveContract.upgradeTo(newCurveContractAddress);
+        console2.log("IBC token address remain:", curveContract.inverseTokenAddress());
         console2.log("LP balance after upgrade:", curveContract.balanceOf(oneLiqudityProvider));
         console2.log(
             "LP IBC balance after upgrade:",

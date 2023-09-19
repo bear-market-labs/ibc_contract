@@ -88,8 +88,6 @@ contract InverseBondingCurve is
 
     // Used for curve calculation
     uint256 private _reserveBalance;
-    // To capture fee in reserve, if contract reserve balance > _reserveBalance + _reserveFeeBalance, then it will be distributed to protocol
-    uint256 private _reserveFeeBalance;
     // The initial virtual reserve and supply
     uint256 private _virtualReserveBalance;
     uint256 private _virtualSupply;
@@ -117,9 +115,9 @@ contract InverseBondingCurve is
         __ERC20_init("IBCLP", "IBCLP");
 
         for (uint8 i = 0; i < MAX_ACTION_COUNT; i++) {
-            _lpFeePercent[i] = FEE_PERCENT;
-            _stakingFeePercent[i] = FEE_PERCENT;
-            _protocolFeePercent[i] = FEE_PERCENT;
+            _lpFeePercent[i] = LP_FEE_PERCENT;
+            _stakingFeePercent[i] = STAKE_FEE_PERCENT;
+            _protocolFeePercent[i] = PROTOCOL_FEE_PERCENT;
         }
 
         _inverseToken = IInverseBondingCurveToken(inverseTokenContractAddress);
@@ -141,6 +139,7 @@ contract InverseBondingCurve is
         onlyOwner
     {
         require((lpFee + stakingFee + protocolFee) < MAX_FEE_PERCENT, ERR_FEE_PERCENT_OUT_OF_RANGE);
+        require(uint256(actionType) < MAX_ACTION_COUNT, ERR_INVALID_PARAM);
         _lpFeePercent[uint256(actionType)] = lpFee;
         _stakingFeePercent[uint256(actionType)] = stakingFee;
         _protocolFeePercent[uint256(actionType)] = protocolFee;
@@ -166,13 +165,12 @@ contract InverseBondingCurve is
     }
 
     function addLiquidity(address recipient, uint256 minPriceLimit) external payable whenNotPaused {
-        require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
+        require(msg.value >= MIN_INPUT_AMOUNT, ERR_INPUT_AMOUNT_TOO_SMALL);
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
+        require(_currentPrice() >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentIbcSupply = _virtualInverseTokenTotalSupply();
-
         uint256 fee = _calculateAndUpdateFee(msg.value, ActionType.ADD_LIQUIDITY);
-        _reserveFeeBalance += fee;
 
         uint256 reserveAdded = msg.value - fee;
         uint256 newBalance = _reserveBalance + reserveAdded;
@@ -184,19 +182,18 @@ contract InverseBondingCurve is
         _mint(recipient, mintToken);
 
         _parameterUtilization = _reserveBalance.mulDown(_parameterUtilization).divDown(newBalance);
-        require(_parameterUtilization < ONE_UINT, ERR_PARAM_ZERO);
+        require(_parameterUtilization < ONE_UINT, ERR_UTILIZATION_INVALID);
         _parameterInvariant = newBalance.divDown(currentIbcSupply.powDown(_parameterUtilization));
         _reserveBalance = newBalance;
-
-        uint256 currentPrice = priceOf(currentIbcSupply);
-        require(currentPrice >= minPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         emit LiquidityAdded(msg.sender, recipient, msg.value, mintToken, _parameterUtilization, _parameterInvariant);
     }
 
     function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external whenNotPaused {
         require(balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
+        require(amount >= MIN_INPUT_AMOUNT, ERR_INPUT_AMOUNT_TOO_SMALL);
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
+        require(_currentPrice() <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         uint256 currentIbcSupply = _virtualInverseTokenTotalSupply();
 
@@ -206,15 +203,13 @@ contract InverseBondingCurve is
             reserveRemoved = _reserveBalance - _virtualReserveBalance;
         }
         uint256 fee = _calculateAndUpdateFee(reserveRemoved, ActionType.REMOVE_LIQUIDITY);
-        _reserveFeeBalance += fee;
         uint256 reserveToUser = reserveRemoved - fee;
 
         uint256 newBalance = _reserveBalance - reserveRemoved;
         _parameterUtilization = _reserveBalance.mulDown(_parameterUtilization).divDown(newBalance);
+        require(_parameterUtilization < ONE_UINT, ERR_UTILIZATION_INVALID);
         _parameterInvariant = newBalance.divDown(currentIbcSupply.powDown(_parameterUtilization));
         _reserveBalance = newBalance;
-        uint256 currentPrice = priceOf(currentIbcSupply);
-        require(currentPrice <= maxPriceLimit, ERR_PRICE_OUT_OF_LIMIT);
 
         _updateLpReward(msg.sender);
         _burn(msg.sender, amount);
@@ -225,9 +220,10 @@ contract InverseBondingCurve is
         require(sent, ERR_FAIL_SEND_ETHER);
     }
 
-    function buyTokens(address recipient, uint256 maxPriceLimit) external payable whenNotPaused {
-        require(recipient != address(0), ERR_EMPTY_ADDRESS);
-        require(msg.value >= MIN_LIQUIDITY, ERR_LIQUIDITY_TOO_SMALL);
+    function buyTokens(address recipient, uint256 maxPriceLimit, uint256 maxReserveLimit) external payable whenNotPaused {
+        require(recipient != address(0), ERR_EMPTY_ADDRESS);        
+        require(msg.value >= MIN_INPUT_AMOUNT, ERR_INPUT_AMOUNT_TOO_SMALL);
+        require(_reserveBalance <= maxReserveLimit, ERR_RESERVE_OUT_OF_LIMIT);
 
         uint256 newToken = _calcMintToken(msg.value);
 
@@ -245,10 +241,11 @@ contract InverseBondingCurve is
         emit TokenBought(msg.sender, recipient, msg.value, mintToken);
     }
 
-    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external whenNotPaused {
-        require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
-        // require(amount >= MIN_SUPPLY, ERR_LIQUIDITY_TOO_SMALL);
+    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit, uint256 minReserveLimit) external whenNotPaused {
+        require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);        
+        require(amount >= MIN_INPUT_AMOUNT, ERR_INPUT_AMOUNT_TOO_SMALL);
         require(recipient != address(0), ERR_EMPTY_ADDRESS);
+        require(_reserveBalance >= minReserveLimit, ERR_RESERVE_OUT_OF_LIMIT);
 
         uint256 fee = _calculateAndUpdateFee(amount, ActionType.SELL_TOKEN);
         uint256 burnToken = amount.sub(fee);
@@ -274,7 +271,7 @@ contract InverseBondingCurve is
     }
 
     function stake(uint256 amount) external whenNotPaused {
-        require(amount >= MIN_SUPPLY, ERR_LIQUIDITY_TOO_SMALL);
+        require(amount >= MIN_INPUT_AMOUNT, ERR_INPUT_AMOUNT_TOO_SMALL);
         require(_inverseToken.balanceOf(msg.sender) >= amount, ERR_INSUFFICIENT_BALANCE);
 
         _updateStakingReward(msg.sender);
@@ -289,6 +286,7 @@ contract InverseBondingCurve is
 
     function unstake(uint256 amount) external whenNotPaused {
         require(_stakingBalance[msg.sender] >= amount && _totalStaked >= amount, ERR_INSUFFICIENT_BALANCE);
+        require(amount >= MIN_INPUT_AMOUNT, ERR_INPUT_AMOUNT_TOO_SMALL);
 
         _updateStakingReward(msg.sender);
         _stakingBalance[msg.sender] -= amount;
@@ -484,6 +482,13 @@ contract InverseBondingCurve is
                 state.feeForFirstStaker = 0;
             }
         }
+    }
+
+    function _currentPrice() private view returns (uint256){
+        return _parameterInvariant.mulDown(_parameterUtilization).divDown(
+            _virtualInverseTokenTotalSupply().powDown(ONE_UINT.sub(_parameterUtilization))
+        );
+
     }
 
     function _calcMintToken(uint256 amount) private view returns (uint256) {
