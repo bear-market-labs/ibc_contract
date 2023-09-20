@@ -7,9 +7,6 @@ import "../src/InverseBondingCurveToken.sol";
 import "../src/InverseBondingCurveProxy.sol";
 import "forge-std/console2.sol";
 
-//TODO: add pause/unpause test
-//TODO: add fuzzy test for major interactions
-//TODO: add selfdestruct attack test
 contract InverseBondingCurveTest is Test {
     using FixedPoint for uint256;
 
@@ -19,6 +16,7 @@ contract InverseBondingCurveTest is Test {
     InverseBondingCurve curveContractImpl;
 
     uint256 ALLOWED_ERROR = 1e10;
+    uint256 FEE_PERCENT = 1e15;
 
     address recipient = address(this);
     address otherRecipient = vm.parseAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
@@ -48,6 +46,10 @@ contract InverseBondingCurveTest is Test {
         tokenContract = new InverseBondingCurveToken(address(proxyContract), "IBC", "IBC");
         curveContract = InverseBondingCurve(address(proxyContract));
         curveContract.initialize(2e18, 1e18, 1e18, address(tokenContract), otherRecipient);
+        curveContract.updateFeeConfig(ActionType.ADD_LIQUIDITY, FEE_PERCENT, FEE_PERCENT, FEE_PERCENT);
+        curveContract.updateFeeConfig(ActionType.REMOVE_LIQUIDITY, FEE_PERCENT, FEE_PERCENT, FEE_PERCENT);
+        curveContract.updateFeeConfig(ActionType.BUY_TOKEN, FEE_PERCENT, FEE_PERCENT, FEE_PERCENT);
+        curveContract.updateFeeConfig(ActionType.SELL_TOKEN, FEE_PERCENT, FEE_PERCENT, FEE_PERCENT);
     }
 
     function testSymbol() public {
@@ -149,7 +151,7 @@ contract InverseBondingCurveTest is Test {
 
     function testPause() public {
         curveContract.addLiquidity{value: 1 ether}(recipient, 1e18);
-        curveContract.buyTokens{value: 1 ether}(recipient, 1e18);
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 3e18);
         vm.startPrank(owner);
         assertEq(curveContract.paused(), false);
         assertEq(tokenContract.paused(), false);
@@ -227,7 +229,7 @@ contract InverseBondingCurveTest is Test {
 
     function testBuyTokens() public {
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
-        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18, 2e18);
 
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
 
@@ -237,13 +239,13 @@ contract InverseBondingCurveTest is Test {
     }
 
     function testSellTokens() public {
-        curveContract.buyTokens{value: 1 ether}(recipient, 1e18);
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 2e18);
 
         uint256 balanceBefore = tokenContract.balanceOf(recipient);
         uint256 ethBalanceBefore = otherRecipient.balance;
 
         tokenContract.approve(address(curveContract), 1e18);
-        curveContract.sellTokens(otherRecipient, 1e18, 1e17);
+        curveContract.sellTokens(otherRecipient, 1e18, 1e17, 0);
         uint256 ethBalanceAfter = otherRecipient.balance;
         uint256 balanceAfter = tokenContract.balanceOf(recipient);
 
@@ -257,7 +259,9 @@ contract InverseBondingCurveTest is Test {
     function testFeeAccumulate() public {
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
 
-        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        CurveParameter memory param = curveContract.curveParameters();
+
+        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18, param.reserve);
 
         uint256 feeBalance = tokenContract.balanceOf(address(curveContract));
 
@@ -267,7 +271,7 @@ contract InverseBondingCurveTest is Test {
         assertEqWithError(feeBalance, fee);
         vm.startPrank(otherRecipient);
         tokenContract.approve(address(curveContract), 1e18);
-        curveContract.sellTokens(otherRecipient, 1e18, 1e17);
+        curveContract.sellTokens(otherRecipient, 1e18, 1e17, 0);
         vm.stopPrank();
 
         feeBalance = tokenContract.balanceOf(address(curveContract));
@@ -290,7 +294,7 @@ contract InverseBondingCurveTest is Test {
 
         uint256 feeBalanceBefore = tokenContract.balanceOf(address(curveContract));
 
-        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18, 1e19);
         uint256 feeBalanceAfter = tokenContract.balanceOf(address(curveContract));
         uint256 totalFee = feeBalanceAfter - feeBalanceBefore;
 
@@ -312,7 +316,7 @@ contract InverseBondingCurveTest is Test {
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 0);
         vm.stopPrank();
 
-        curveContract.buyTokens{value: 2 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 2 ether}(otherRecipient, 1e18, 1e19);
 
         vm.startPrank(otherRecipient);
         tokenContract.transfer(thirdRecipient, 1e18);
@@ -327,7 +331,7 @@ contract InverseBondingCurveTest is Test {
         vm.startPrank(otherRecipient);
 
         tokenContract.approve(address(curveContract), 1e18);
-        curveContract.sellTokens(otherRecipient, 1e18, 0);
+        curveContract.sellTokens(otherRecipient, 1e18, 0, 0);
 
         uint256 firstSellFee = 1e15 * curveContract.balanceOf(otherRecipient) / curveContract.totalSupply();
         vm.stopPrank();
@@ -335,7 +339,7 @@ contract InverseBondingCurveTest is Test {
         vm.startPrank(thirdRecipient);
         curveContract.addLiquidity{value: address(curveContract).balance}(thirdRecipient, 0);
         tokenContract.approve(address(curveContract), 1e18);
-        curveContract.sellTokens(otherRecipient, 1e18, 0);
+        curveContract.sellTokens(otherRecipient, 1e18, 0, 0);
 
         uint256 secondSellFee = 1e15 * curveContract.balanceOf(otherRecipient) / curveContract.totalSupply();
         vm.stopPrank();
@@ -367,7 +371,7 @@ contract InverseBondingCurveTest is Test {
         vm.deal(otherRecipient, 1000 ether);
         vm.deal(thirdRecipient, 1000 ether);
 
-        curveContract.buyTokens{value: 20 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 20 ether}(otherRecipient, 1e18, 1e20);
 
         vm.startPrank(otherRecipient);
         tokenContract.transfer(thirdRecipient, 2e18);
@@ -382,14 +386,14 @@ contract InverseBondingCurveTest is Test {
 
         vm.startPrank(otherRecipient);
         tokenContract.approve(address(curveContract), 1e18);
-        curveContract.sellTokens(otherRecipient, 1e18, 0);
+        curveContract.sellTokens(otherRecipient, 1e18, 0, 0);
         vm.stopPrank();
 
         vm.startPrank(thirdRecipient);
         tokenContract.approve(address(curveContract), 1e18);
         curveContract.stake(1e18);
         tokenContract.approve(address(curveContract), 1e18);
-        curveContract.sellTokens(otherRecipient, 1e18, 0);
+        curveContract.sellTokens(otherRecipient, 1e18, 0, 0);
         vm.stopPrank();
 
         vm.startPrank(otherRecipient);
@@ -417,7 +421,7 @@ contract InverseBondingCurveTest is Test {
         assertEq(reward, 0);
 
         //perform mints to generate lp fees
-        curveContract.buyTokens{value: 2 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 2 ether}(otherRecipient, 1e18, 1e19);
 
         //transfer from recipient to otherRecipient
         //confirm sender/recipient's reward state
@@ -431,7 +435,7 @@ contract InverseBondingCurveTest is Test {
         assert(recipientLpReward == 0);
 
         //perform more mints to generate lp fees
-        curveContract.buyTokens{value: 1 ether}(recipient, 1e18);
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 1e19);
 
         //transferfrom otherRecipient to recipient
         //confirm sender/recipient's reward state
@@ -450,7 +454,7 @@ contract InverseBondingCurveTest is Test {
     }
 
     function testStake() public {
-        curveContract.buyTokens{value: 2 ether}(recipient, 1e18);
+        curveContract.buyTokens{value: 2 ether}(recipient, 1e18, 1e19);
 
         uint256 stakeAmount = tokenContract.balanceOf(recipient);
         assertEq(curveContract.stakingBalanceOf(recipient), 0);
@@ -462,7 +466,7 @@ contract InverseBondingCurveTest is Test {
     }
 
     function testUnstake() public {
-        curveContract.buyTokens{value: 2 ether}(recipient, 1e18);
+        curveContract.buyTokens{value: 2 ether}(recipient, 1e18, 1e19);
 
         uint256 stakeAmount = tokenContract.balanceOf(recipient);
         assertEq(curveContract.stakingBalanceOf(recipient), 0);
@@ -481,7 +485,7 @@ contract InverseBondingCurveTest is Test {
         uint256 accumulatedReserveFee = (LIQUIDITY_2ETH_BEFOR_FEE - 2e18).mulDown(2e18).divDown(3e18);
 
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
-        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18, 1e19);
 
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
 
@@ -509,7 +513,7 @@ contract InverseBondingCurveTest is Test {
 
         uint256 accumulatedReserveFee = (LIQUIDITY_2ETH_BEFOR_FEE - 2e18).mulDown(1e18).divDown(3e18);
 
-        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
+        curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18, 1e19);
 
         uint256 accumulatedTokenFee = uint256(4324218750000000).divDown(3e18);
         vm.startPrank(otherRecipient);
@@ -536,5 +540,75 @@ contract InverseBondingCurveTest is Test {
         assertEq(tokenBalanceAfter - tokenBalanceBefore, inverseTokenForStaking);
 
         vm.stopPrank();
+    }
+
+    function testRevertIfPriceOutOfLimitWhenBuyToken() public {
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 2e18);
+        CurveParameter memory param = curveContract.curveParameters();
+
+        tokenContract.approve(address(curveContract), 2e18);
+        curveContract.sellTokens(recipient, 1e18, 0, 0);
+
+        vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT));
+        curveContract.buyTokens{value: 1 ether}(recipient, param.price, 3e18);
+    }
+
+    function testRevertIfReserveOutOfLimitWhenBuyToken() public {
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 2e18);
+        CurveParameter memory param = curveContract.curveParameters();
+
+        // tokenContract.approve(address(curveContract), 2e18);
+        // curveContract.sellTokens(recipient, 1e18, 0, 0);
+
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, param.price);
+        param = curveContract.curveParameters();
+
+        vm.expectRevert(bytes(ERR_RESERVE_OUT_OF_LIMIT));
+        curveContract.buyTokens{value: 1 ether}(recipient, param.price + ALLOWED_ERROR, 3e18);
+    }
+
+    function testRevertIfPriceOutOfLimitWhenSellToken() public {
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 2e18);
+        CurveParameter memory param = curveContract.curveParameters();
+
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 3e18);
+        tokenContract.approve(address(curveContract), 2e18);
+         vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT));
+        curveContract.sellTokens(recipient, 1e18, param.price, 0);
+    }
+
+    function testRevertIfReserveOutOfLimitWhenSellToken() public {
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
+
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 4e18);
+        CurveParameter memory param = curveContract.curveParameters();
+
+        curveContract.removeLiquidity(recipient, 1e18, param.price);        
+
+        tokenContract.approve(address(curveContract), 2e18);
+        vm.expectRevert(bytes(ERR_RESERVE_OUT_OF_LIMIT));
+        curveContract.sellTokens(recipient, 1e18, 0, param.reserve);
+    }
+
+    function testRevertIfPriceOutOfLimitWhenAddLiquidity() public {
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 2e18);
+        CurveParameter memory param = curveContract.curveParameters();
+
+        vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT)); 
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
+    }
+
+    function testRevertIfPriceOutOfLimitWhenRemoveLiquidity() public {
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
+
+        curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 4e18);
+        CurveParameter memory param = curveContract.curveParameters();
+             
+
+        tokenContract.approve(address(curveContract), 2e18);
+        curveContract.sellTokens(recipient, 1e18, 0, 0);
+
+        vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT)); 
+        curveContract.removeLiquidity(recipient, 1e18, param.price);   
     }
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 string constant ERR_POOL_NOT_INITIALIZED = "Can only be called after pool is initialized";
 
-string constant ERR_LIQUIDITY_TOO_SMALL = "Liquidity too small";
+string constant ERR_INPUT_AMOUNT_TOO_SMALL = "Input amount too small";
 
 string constant ERR_PARAM_ZERO = "Parameter can't be zero";
 
@@ -22,3 +22,9 @@ string constant ERR_INVARIANT_CHANGED = "Curve invarint changed out of range";
 string constant ERR_ONLY_OWNER_ALLOWED = "Only protocol fee owner allowed";
 
 string constant ERR_FAIL_SEND_ETHER = "Failed to send Ether";
+
+string constant ERR_INVALID_PARAM = "Invalid parameter";
+
+string constant ERR_UTILIZATION_INVALID = "Invalid utilization parameter";
+
+string constant ERR_RESERVE_OUT_OF_LIMIT = "Reserve out of limit";
