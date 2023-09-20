@@ -12,3 +12,4 @@ uint256 constant ALLOWED_INVARIANT_CHANGE_PERCENT = 1e12; //0.000001
 
 uint8 constant MAX_ACTION_COUNT = 4;
 uint8 constant MAX_FEE_TYPE_COUNT = 2;
+uint8 constant MAX_FEE_STATE_COUNT = 2;

@@ -87,7 +87,7 @@ contract InverseBondingCurveFuzzTest is Test {
         curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
     }
 
-    function testSepecific() private {
+    function testSpecific() private {
         uint256 reserve = 2e22; // 2000
         uint256 supply = 1e21; //
         uint256 price = 1e19;

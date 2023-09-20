@@ -525,16 +525,21 @@ contract InverseBondingCurve is
             : _feeState[uint256(FeeType.RESERVE)];
 
         if (totalSupply() > 0) {
-            state.globalLpFeeIndex += lpFee.divDown(totalSupply());
+            state.globalFeeIndexes[uint256(RewardType.LP)] += lpFee.divDown(totalSupply());
+            state.totalReward[uint256(RewardType.LP)] += lpFee;
+            state.totalPendingReward[uint256(RewardType.LP)] += lpFee;
         } else {
             state.protocolFee += lpFee;
         }
 
         if (_totalStaked > 0) {
-            state.globalStakingFeeIndex += stakingFee.divDown(_totalStaked);
+            state.globalFeeIndexes[uint256(RewardType.STAKING)] += stakingFee.divDown(_totalStaked);
         } else {
             state.feeForFirstStaker = stakingFee;
         }
+        state.totalReward[uint256(RewardType.STAKING)] += stakingFee;
+        state.totalPendingReward[uint256(RewardType.STAKING)] += stakingFee;
+        
 
         state.protocolFee += protocolFee;
 
@@ -545,13 +550,13 @@ contract InverseBondingCurve is
         if (_totalStaked == 0) {
             FeeState storage state = _feeState[uint256(FeeType.INVERSE_TOKEN)];
             if (state.feeForFirstStaker > 0) {
-                state.userStakingPendingReward[msg.sender] = state.feeForFirstStaker;
+                state.pendingRewards[uint256(RewardType.STAKING)][msg.sender] = state.feeForFirstStaker;
                 state.feeForFirstStaker = 0;
             }
 
             state = _feeState[uint256(FeeType.RESERVE)];
             if (state.feeForFirstStaker > 0) {
-                state.userStakingPendingReward[msg.sender] = state.feeForFirstStaker;
+                state.pendingRewards[uint256(RewardType.STAKING)][msg.sender] = state.feeForFirstStaker;
                 state.feeForFirstStaker = 0;
             }
         }
@@ -590,9 +595,12 @@ contract InverseBondingCurve is
     }
 
     function _claimReward(FeeState storage state) private returns (uint256) {
-        uint256 reward = state.userLpPendingReward[msg.sender] + state.userStakingPendingReward[msg.sender];
-        state.userLpPendingReward[msg.sender] = 0;
-        state.userStakingPendingReward[msg.sender] = 0;
+        uint256 reward = state.pendingRewards[uint256(RewardType.LP)][msg.sender] + state.pendingRewards[uint256(RewardType.STAKING)][msg.sender];
+        state.totalPendingReward[uint256(RewardType.LP)] -= state.pendingRewards[uint256(RewardType.LP)][msg.sender];
+        state.totalPendingReward[uint256(RewardType.STAKING)] -= state.pendingRewards[uint256(RewardType.STAKING)][msg.sender];
+        state.pendingRewards[uint256(RewardType.LP)][msg.sender] = 0;
+        state.pendingRewards[uint256(RewardType.STAKING)][msg.sender] = 0;
+        
         return reward;
     }
 

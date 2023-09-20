@@ -11,23 +11,23 @@ library CurveLibrary {
 
     function updateLpReward(address user, uint256 userLpBalance, FeeState storage state) public {
         if (userLpBalance > 0) {
-            uint256 reward = state.globalLpFeeIndex.sub(state.userLpFeeIndexState[user]).mulDown(userLpBalance);
-            state.userLpPendingReward[user] += reward;
-            state.userLpFeeIndexState[user] = state.globalLpFeeIndex;
+            uint256 reward = state.globalFeeIndexes[uint256(RewardType.LP)].sub(state.feeIndexStates[uint256(RewardType.LP)][user]).mulDown(userLpBalance);
+            state.pendingRewards[uint256(RewardType.LP)][user] += reward;
+            state.feeIndexStates[uint256(RewardType.LP)][user] = state.globalFeeIndexes[uint256(RewardType.LP)];
         } else {
-            state.userLpFeeIndexState[user] = state.globalLpFeeIndex;
+            state.feeIndexStates[uint256(RewardType.LP)][user] = state.globalFeeIndexes[uint256(RewardType.LP)];
         }
     }
 
     function updateStakingReward(address user, uint256 userStakingBalance,FeeState storage state) public{
         if (userStakingBalance > 0) {
             uint256 reward =
-                state.globalStakingFeeIndex.sub(state.userStakingFeeIndexState[user]).mulDown(userStakingBalance);
-            state.userStakingPendingReward[user] += reward;
-            state.userStakingFeeIndexState[user] = state.globalStakingFeeIndex;
+                state.globalFeeIndexes[uint256(RewardType.STAKING)].sub(state.feeIndexStates[uint256(RewardType.STAKING)][user]).mulDown(userStakingBalance);
+            state.pendingRewards[uint256(RewardType.STAKING)][user] += reward;
+            state.feeIndexStates[uint256(RewardType.STAKING)][user] = state.globalFeeIndexes[uint256(RewardType.STAKING)];
         } else {
-            state.userStakingPendingReward[user] = 0;
-            state.userStakingFeeIndexState[user] = state.globalStakingFeeIndex;
+            state.pendingRewards[uint256(RewardType.STAKING)][user] = 0;
+            state.feeIndexStates[uint256(RewardType.STAKING)][user] = state.globalFeeIndexes[uint256(RewardType.STAKING)];
         }
     }
 
@@ -38,14 +38,14 @@ library CurveLibrary {
     {
         uint256 reward = 0;
         if (rewardType == RewardType.LP) {
-            reward += state.userLpPendingReward[recipient];
+            reward += state.pendingRewards[uint256(RewardType.LP)][recipient];
             if (userBalance > 0) {
-                reward += state.globalLpFeeIndex.sub(state.userLpFeeIndexState[recipient]).mulDown(userBalance);
+                reward += state.globalFeeIndexes[uint256(RewardType.LP)].sub(state.feeIndexStates[uint256(RewardType.LP)][recipient]).mulDown(userBalance);
             }
         } else if (rewardType == RewardType.STAKING) {
-            reward += state.userStakingPendingReward[recipient];
+            reward += state.pendingRewards[uint256(RewardType.STAKING)][recipient];
             if (userBalance > 0) {
-                reward += state.globalStakingFeeIndex.sub(state.userStakingFeeIndexState[recipient]).mulDown(
+                reward += state.globalFeeIndexes[uint256(RewardType.STAKING)].sub(state.feeIndexStates[uint256(RewardType.STAKING)][recipient]).mulDown(
                     userBalance
                 );
             }
