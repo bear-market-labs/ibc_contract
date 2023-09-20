@@ -8,7 +8,7 @@ import "../src/InverseBondingCurveToken.sol";
 import "../src/Deployer.sol";
 import "forge-std/console2.sol";
 
-contract DeployScript is Script {
+contract DeployerScript is Script {
     function setUp() public {}
 
     function run() public {
@@ -22,17 +22,17 @@ contract DeployScript is Script {
         uint256 supply = 1e18;
         uint256 price = 1e18;
 
-        Deployer deployer = Deployer(vm.parseAddress("0x716473fb4e7cd49c7d1ec7ec6d7490a03d9da332"));
+        Deployer deployer = new Deployer();
 
-        deployer.deploy(
-            type(InverseBondingCurve).creationCode,
-            type(InverseBondingCurveToken).creationCode,
-            type(InverseBondingCurveProxy).creationCode,
-            virtualReserve,
-            supply,
-            price,
-            feeOwner
-        );
+        // deployer.deploy(
+        //     type(InverseBondingCurve).creationCode,
+        //     type(InverseBondingCurveToken).creationCode,
+        //     type(InverseBondingCurveProxy).creationCode,
+        //     virtualReserve,
+        //     supply,
+        //     price,
+        //     feeOwner
+        // );
 
         vm.stopBroadcast();
     }

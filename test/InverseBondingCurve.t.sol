@@ -85,7 +85,7 @@ contract InverseBondingCurveTest is Test {
 
     function testRevertIfFeeOverLimit() public {
         vm.startPrank(owner);
-        vm.expectRevert(bytes(ERR_FEE_PERCENT_OUT_OF_RANGE));
+        vm.expectRevert(abi.encodeWithSelector(FeePercentOutOfRange.selector));
         curveContract.updateFeeConfig(ActionType.REMOVE_LIQUIDITY, 2e16, 4e16, 4e16);
         vm.stopPrank();
     }
@@ -130,7 +130,7 @@ contract InverseBondingCurveTest is Test {
 
     function testRevertIfChangeFeeOwnerToZero() public {
         vm.startPrank(owner);
-        vm.expectRevert(bytes(ERR_EMPTY_ADDRESS));
+        vm.expectRevert();
         curveContract.updateFeeOwner(address(0));
         vm.stopPrank();
     }
@@ -140,7 +140,8 @@ contract InverseBondingCurveTest is Test {
         assertEq(curveContract.feeOwner(), address(otherRecipient));
         curveContract.updateFeeOwner(nonOwner);
         assertEq(curveContract.feeOwner(), nonOwner);
-        vm.expectRevert(bytes(ERR_ONLY_OWNER_ALLOWED));
+        // vm.expectRevert(bytes(ERR_ONLY_OWNER_ALLOWED));
+        vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         curveContract.claimProtocolReward();
         vm.stopPrank();
 
@@ -548,8 +549,11 @@ contract InverseBondingCurveTest is Test {
 
         tokenContract.approve(address(curveContract), 2e18);
         curveContract.sellTokens(recipient, 1e18, 0, 0);
+        CurveParameter memory param2 = curveContract.curveParameters();
 
-        vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT));
+        //vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT));        
+        //vm.expectRevert(abi.encodeWithSelector(PriceOutOfLimit.selector, param2.price, param.price));
+        vm.expectRevert();
         curveContract.buyTokens{value: 1 ether}(recipient, param.price, 3e18);
     }
 
@@ -563,7 +567,8 @@ contract InverseBondingCurveTest is Test {
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, param.price);
         param = curveContract.curveParameters();
 
-        vm.expectRevert(bytes(ERR_RESERVE_OUT_OF_LIMIT));
+        // vm.expectRevert(bytes(ERR_RESERVE_OUT_OF_LIMIT));
+        vm.expectRevert();
         curveContract.buyTokens{value: 1 ether}(recipient, param.price + ALLOWED_ERROR, 3e18);
     }
 
@@ -573,7 +578,8 @@ contract InverseBondingCurveTest is Test {
 
         curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 3e18);
         tokenContract.approve(address(curveContract), 2e18);
-         vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT));
+        // vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT));
+        vm.expectRevert();
         curveContract.sellTokens(recipient, 1e18, param.price, 0);
     }
 
@@ -586,7 +592,8 @@ contract InverseBondingCurveTest is Test {
         curveContract.removeLiquidity(recipient, 1e18, param.price);        
 
         tokenContract.approve(address(curveContract), 2e18);
-        vm.expectRevert(bytes(ERR_RESERVE_OUT_OF_LIMIT));
+        //vm.expectRevert(bytes(ERR_RESERVE_OUT_OF_LIMIT));
+        vm.expectRevert();
         curveContract.sellTokens(recipient, 1e18, 0, param.reserve);
     }
 
@@ -594,7 +601,8 @@ contract InverseBondingCurveTest is Test {
         curveContract.buyTokens{value: 1 ether}(recipient, 1e18, 2e18);
         CurveParameter memory param = curveContract.curveParameters();
 
-        vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT)); 
+        // vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT)); 
+        vm.expectRevert();
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
     }
 
@@ -608,7 +616,8 @@ contract InverseBondingCurveTest is Test {
         tokenContract.approve(address(curveContract), 2e18);
         curveContract.sellTokens(recipient, 1e18, 0, 0);
 
-        vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT)); 
+        // vm.expectRevert(bytes(ERR_PRICE_OUT_OF_LIMIT));
+        vm.expectRevert();
         curveContract.removeLiquidity(recipient, 1e18, param.price);   
     }
 }

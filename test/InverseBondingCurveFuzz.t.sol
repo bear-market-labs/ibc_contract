@@ -68,20 +68,19 @@ contract InverseBondingCurveFuzzTest is Test {
     }
 
     function testFuzz(uint256 additionalReserve, uint256 buyReserve) private {
-        uint256 reserve = 1e21; // 1000
-        uint256 supply = 5e24; //
-        uint256 price = 1e14;
-        // 0.0001 ETH
+        uint256 reserve = 2e22; // 2000
+        uint256 supply = 1e21; //
+        uint256 price = 1e19;
 
         additionalReserve = bound(additionalReserve, 0.001 ether, 1e4 ether);
-        buyReserve = bound(buyReserve, 0.001 ether, 1e4 ether);
+        buyReserve = bound(buyReserve, 0.01 ether, 1e4 ether);
         vm.assume(supply < reserve.divDown(price));
 
         curveContract.initialize(reserve, supply, price, address(tokenContract), otherRecipient);
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e19, 1e19);
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e20, reserve + additionalReserve);
         curveContract.removeLiquidity(recipient, curveContract.balanceOf(recipient), 1e19);
 
         tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
@@ -89,19 +88,62 @@ contract InverseBondingCurveFuzzTest is Test {
     }
 
     function testSepecific() private {
-        uint256 reserve = 1e18;
-        uint256 supply = 5e17;
-        uint256 price = 5e17;
+        uint256 reserve = 2e22; // 2000
+        uint256 supply = 1e21; //
+        uint256 price = 1e19;
 
-        uint256 additionalReserve = 301962792471728260;
-        uint256 buyReserve = 115501070904373826890698371;
+        // uint256 additionalReserve = 638085905206215834182;
+        // uint256 buyReserve = 190767065193740254156;
+
+        uint256 additionalReserve = 1e21;
+        uint256 buyReserve = 1e21;        
 
         vm.assume(supply < reserve.divDown(price));
 
         curveContract.initialize(reserve, supply, price, address(tokenContract), otherRecipient);
+        CurveParameter memory param = curveContract.curveParameters();
+        logParameter(param, "after initialize");
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
+        // CurveParameter memory param = curveContract.curveParameters();
+        param = curveContract.curveParameters();
+        logParameter(param, "after add liquidity");
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e19, 1e20);
+
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e20, reserve + additionalReserve);
+        param = curveContract.curveParameters();
+        logParameter(param, "after buy token");
+
+        uint256 newInvariant = param.reserve.divDown((param.supply).powDown(param.parameterUtilization));
+        console2.log("newInvariant:",newInvariant);
+
+
+        uint256 _parameterUtilization = param.price.mulDown(param.supply).divDown(param.reserve);
+
+        // require(_parameterUtilization < ONE_UINT, ERR_UTILIZATION_INVALID);
+        uint256 _parameterInvariant = param.reserve.divDown(param.supply.powDown(_parameterUtilization));
+
+        console2.log("new calc _parameterUtilization:", _parameterUtilization);
+        console2.log("new calc _parameterInvariant:", _parameterInvariant);
+
+        curveContract.removeLiquidity(recipient, curveContract.balanceOf(recipient), 1e19);
+        param = curveContract.curveParameters();
+        logParameter(param, "after remove liquidity");
+
+        tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
+        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
+        param = curveContract.curveParameters();
+        logParameter(param, "after sell token");
+    }
+
+    function logParameter(CurveParameter memory param, string memory desc) private {
+        console2.log(desc);
+        console2.log("  reserve:", param.reserve);
+        console2.log("  supply:", param.supply);
+        console2.log("  virtualReserve:", param.virtualReserve);
+        console2.log("  virtualSupply:", param.virtualSupply);
+        console2.log("  price:", param.price);
+        console2.log("  parameterInvariant:", param.parameterInvariant);
+        console2.log("  parameterUtilization:", param.parameterUtilization);
     }
 }
