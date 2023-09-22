@@ -21,7 +21,7 @@ contract Deployer is Ownable {
         uint256 supply,
         uint256 price,
         address protocolFeeOwner
-    ) external onlyOwner{
+    ) external onlyOwner {
         bytes32 salt = bytes32(uint256(uint160(msg.sender)) + block.number);
         _cruveContract = Create2.deploy(0, salt, abi.encodePacked(curveContractCode));
 
@@ -50,7 +50,11 @@ contract Deployer is Ownable {
         emit Deployed(_cruveContract, _tokenContract, _proxyContract);
     }
 
-    function getDeployedContracts() external view returns (address cruveContract, address proxyContract, address tokenContract) {
+    function getDeployedContracts()
+        external
+        view
+        returns (address cruveContract, address proxyContract, address tokenContract)
+    {
         return (_cruveContract, _tokenContract, _proxyContract);
     }
 }

@@ -96,7 +96,7 @@ contract InverseBondingCurveFuzzTest is Test {
         // uint256 buyReserve = 190767065193740254156;
 
         uint256 additionalReserve = 1e21;
-        uint256 buyReserve = 1e21;        
+        uint256 buyReserve = 1e21;
 
         vm.assume(supply < reserve.divDown(price));
 
@@ -109,14 +109,12 @@ contract InverseBondingCurveFuzzTest is Test {
         param = curveContract.curveParameters();
         logParameter(param, "after add liquidity");
 
-
         curveContract.buyTokens{value: buyReserve}(recipient, 1e20, reserve + additionalReserve);
         param = curveContract.curveParameters();
         logParameter(param, "after buy token");
 
         uint256 newInvariant = param.reserve.divDown((param.supply).powDown(param.parameterUtilization));
-        console2.log("newInvariant:",newInvariant);
-
+        console2.log("newInvariant:", newInvariant);
 
         uint256 _parameterUtilization = param.price.mulDown(param.supply).divDown(param.reserve);
 

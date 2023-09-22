@@ -20,11 +20,9 @@ contract DeployerTest is Test {
     }
 
     function testDeploy() public {
-
         uint256 virtualReserve = 2e21;
         uint256 supply = 1e21;
         uint256 price = 1e18;
-
 
         Deployer deployer = new Deployer();
 
