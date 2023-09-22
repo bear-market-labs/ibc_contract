@@ -47,4 +47,19 @@ interface IInverseBondingCurve {
             uint256 reserveForStaking
         );
     function totalStaked() external view returns (uint256);
+
+    function blockRewardEMA(RewardType rewardType)
+        external
+        view
+        returns (uint256 inverseTokenReward, uint256 reserveReward);
+
+    function rewardState()
+        external
+        view
+        returns (
+            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenTotalReward,
+            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenPendingReward,
+            uint256[MAX_FEE_STATE_COUNT] memory reserveTotalReward,
+            uint256[MAX_FEE_STATE_COUNT] memory reservePendingReward
+        );
 }

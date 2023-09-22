@@ -10,5 +10,13 @@ uint256 constant MAX_FEE_PERCENT = 1e17;
 uint256 constant ALLOWED_INVARIANT_CHANGE = 1e10;
 uint256 constant ALLOWED_INVARIANT_CHANGE_PERCENT = 1e12; //0.000001
 
+uint256 constant DAILY_BLOCK_COUNT = 7200;
+
 uint8 constant MAX_ACTION_COUNT = 4;
 uint8 constant MAX_FEE_TYPE_COUNT = 2;
+uint8 constant MAX_FEE_STATE_FOR_USER_COUNT = 2;
+uint8 constant MAX_FEE_STATE_COUNT = 3;
+uint8 constant MAX_EMA_STATE_COUNT = 2;
+
+uint8 constant PREVIOUS_EMA_INDEX = 0;
+uint8 constant CURRENT_EMA_INDEX = 1;

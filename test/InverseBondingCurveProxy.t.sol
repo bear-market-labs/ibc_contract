@@ -8,10 +8,14 @@ import "../src/InverseBondingCurveToken.sol";
 import "forge-std/console2.sol";
 
 contract InverseBondingCurveV2 is InverseBondingCurve {
-    uint256 _newValue = 2;
+    uint256 _newValue;
 
-    function newMethod() public returns (uint256) {
+    function newValueGet() public view returns (uint256) {
         return _newValue;
+    }
+
+    function newValueSet(uint256 value) public {
+        _newValue = value;
     }
 }
 
@@ -77,15 +81,14 @@ contract InverseBondingCurveProxyTest is Test {
 
     function testUpgrade() public {
         InverseBondingCurveV2 contractV2 = new InverseBondingCurveV2();
-        (bool success, bytes memory data) = address(curveContract).call(abi.encodeWithSignature("newMethod()"));
+        (bool success, bytes memory data) = address(curveContract).call(abi.encodeWithSignature("newValueGet()"));
         assertEq(success, false);
         curveContract.upgradeTo(address(contractV2));
-        (success, data) = address(curveContract).call(abi.encodeWithSignature("newMethod()"));
+        (success, data) = address(curveContract).call(abi.encodeWithSignature("newValueSet(uint256)", 2e18));
         assertEq(success, true);
-        console2.log(success);
-        console2.logBytes(data);
-        // InverseBondingCurveV2 v2 = InverseBondingCurveV2(curveContract);
-        // console2.log(v2.newMethod());
+        (success, data) = address(curveContract).call(abi.encodeWithSignature("newValueGet()"));
+        assertEq(success, true);
+        assertEq(bytes32(data), bytes32(uint256(2e18)));
     }
 
     function testRevertIfUpgradeNotFromProxy() public {

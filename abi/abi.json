@@ -5,6 +5,117 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "EmptyAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      }
+    ],
+    "name": "FailToSend",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FeePercentOutOfRange",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "InputAmountTooSmall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidInput",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "invariant",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "newInvariant",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvariantChanged",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ParameterZeroNotAllowed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "priceLimit",
+        "type": "uint256"
+      }
+    ],
+    "name": "PriceOutOfLimit",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "reserve",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "reserveLimit",
+        "type": "uint256"
+      }
+    ],
+    "name": "ReserveOutOfLimit",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "Unauthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "parameterUtilization",
+        "type": "uint256"
+      }
+    ],
+    "name": "UtilizationInvalid",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -253,44 +364,6 @@
       {
         "indexed": true,
         "internalType": "address",
-        "name": "from",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "LiquidityStaked",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "from",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "LiquidityUnstaked",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
         "name": "previousOwner",
         "type": "address"
       },
@@ -408,6 +481,44 @@
       }
     ],
     "name": "TokenSold",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "TokenStaked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "TokenUnstaked",
     "type": "event"
   },
   {
@@ -549,6 +660,30 @@
   {
     "inputs": [
       {
+        "internalType": "enum RewardType",
+        "name": "rewardType",
+        "type": "uint8"
+      }
+    ],
+    "name": "blockRewardEMA",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "inverseTokenReward",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "reserveReward",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "recipient",
         "type": "address"
@@ -556,6 +691,11 @@
       {
         "internalType": "uint256",
         "name": "maxPriceLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxReserveLimit",
         "type": "uint256"
       }
     ],
@@ -933,6 +1073,52 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "rewardOfProtocol",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "inverseTokenReward",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "reserveReward",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "rewardState",
+    "outputs": [
+      {
+        "internalType": "uint256[3]",
+        "name": "inverseTokenTotalReward",
+        "type": "uint256[3]"
+      },
+      {
+        "internalType": "uint256[3]",
+        "name": "inverseTokenPendingReward",
+        "type": "uint256[3]"
+      },
+      {
+        "internalType": "uint256[3]",
+        "name": "reserveTotalReward",
+        "type": "uint256[3]"
+      },
+      {
+        "internalType": "uint256[3]",
+        "name": "reservePendingReward",
+        "type": "uint256[3]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -947,6 +1133,11 @@
       {
         "internalType": "uint256",
         "name": "minPriceLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minReserveLimit",
         "type": "uint256"
       }
     ],
@@ -995,6 +1186,19 @@
         "internalType": "string",
         "name": "",
         "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalStaked",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
