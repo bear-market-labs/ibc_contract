@@ -503,7 +503,7 @@ contract InverseBondingCurve is
             uint256 reserveForStaking
         )
     {
-        return
+        (inverseTokenForLp, inverseTokenForStaking, reserveForLp, reserveForStaking) =
             CurveLibrary.calculatePendingReward(recipient, _feeState, balanceOf(recipient), _stakingBalance[recipient]);
     }
 
@@ -517,7 +517,7 @@ contract InverseBondingCurve is
         view
         returns (uint256 inverseTokenReward, uint256 reserveReward)
     {
-        return CurveLibrary.calculateBlockRewardEMA(_feeState, rewardType);
+        (inverseTokenReward, reserveReward) = CurveLibrary.calculateBlockRewardEMA(_feeState, rewardType);
     }
 
     function rewardState()
