@@ -89,10 +89,11 @@ contract InverseBondingCurve is
     mapping(address => uint256) private _stakingBalance;
 
     // Used for curve calculation
-    uint256 private _reserveBalance;
+    uint256 private _reserveBalance; // note: this includes lp AND mint deposits
     // The initial virtual reserve and supply
     uint256 private _virtualReserveBalance;
     uint256 private _virtualSupply;
+    uint256 private _mintBurnReserveBalance; // reserve only from mints
 
     FeeState[MAX_FEE_TYPE_COUNT] private _feeState;
 
@@ -194,9 +195,10 @@ contract InverseBondingCurve is
         uint256 fee = _calculateAndUpdateFee(msg.value, ActionType.ADD_LIQUIDITY);
 
         uint256 reserveAdded = msg.value - fee;
+
         uint256 newBalance = _reserveBalance + reserveAdded;
         uint256 mintToken = _virtualTotalSupply().mulDown(reserveAdded).divDown(
-            ONE_UINT.sub(_parameterUtilization).mulDown(_reserveBalance)
+            ONE_UINT.sub(_parameterUtilization).mulDown(_reserveBalance - _mintBurnReserveBalance)
         );
 
         _updateLpReward(recipient);
@@ -229,7 +231,7 @@ contract InverseBondingCurve is
         uint256 currentIbcSupply = _virtualInverseTokenTotalSupply();
 
         uint256 reserveRemoved =
-            _reserveBalance.mulDown(ONE_UINT.sub(_parameterUtilization)).mulDown(amount).divDown(_virtualTotalSupply());
+            (_reserveBalance - _mintBurnReserveBalance).mulDown(ONE_UINT.sub(_parameterUtilization)).mulDown(amount).divDown(_virtualTotalSupply());
         if (reserveRemoved > _reserveBalance - _virtualReserveBalance) {
             reserveRemoved = _reserveBalance - _virtualReserveBalance;
         }
@@ -275,6 +277,7 @@ contract InverseBondingCurve is
         uint256 fee = _calculateAndUpdateFee(newToken, ActionType.BUY_TOKEN);
         uint256 mintToken = newToken.sub(fee);
         _reserveBalance += msg.value;
+        _mintBurnReserveBalance += msg.value;
         if (msg.value.divDown(mintToken) > maxPriceLimit) {
             revert PriceOutOfLimit(msg.value.divDown(mintToken), maxPriceLimit);
         }
@@ -316,6 +319,7 @@ contract InverseBondingCurve is
             returnLiquidity = _reserveBalance - _virtualReserveBalance;
         }
         _reserveBalance -= returnLiquidity;
+        _mintBurnReserveBalance -= returnLiquidity;
 
         if (returnLiquidity.divDown(burnToken) < minPriceLimit) {
             revert PriceOutOfLimit(returnLiquidity.divDown(burnToken), minPriceLimit);
