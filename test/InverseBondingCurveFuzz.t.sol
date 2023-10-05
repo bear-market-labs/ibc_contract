@@ -87,7 +87,7 @@ contract InverseBondingCurveFuzzTest is Test {
         curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
     }
 
-    function testSpecific() private {
+    function testSpecific() public {
         uint256 reserve = 2e22; // 2000
         uint256 supply = 1e21; //
         uint256 price = 1e19;
@@ -95,8 +95,8 @@ contract InverseBondingCurveFuzzTest is Test {
         // uint256 additionalReserve = 638085905206215834182;
         // uint256 buyReserve = 190767065193740254156;
 
-        uint256 additionalReserve = 1e21;
-        uint256 buyReserve = 1e21;
+        uint256 additionalReserve = 1.1e24;
+        uint256 buyReserve = 1.1e24;
 
         vm.assume(supply < reserve.divDown(price));
 
@@ -132,6 +132,66 @@ contract InverseBondingCurveFuzzTest is Test {
         curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
         param = curveContract.curveParameters();
         logParameter(param, "after sell token");
+    }
+
+
+    function testSpecific_2() public {
+        uint256 reserve = 2e22; // 2000
+        uint256 supply = 1e21; //
+        uint256 price = 1e19;
+
+        // uint256 additionalReserve = 638085905206215834182;
+        // uint256 buyReserve = 190767065193740254156;
+
+        uint256 additionalReserve = 1e21;
+        uint256 buyReserve = 1e21;
+
+        vm.assume(supply < reserve.divDown(price));
+
+
+
+        curveContract.initialize(reserve, supply, price, address(tokenContract), otherRecipient);
+        CurveParameter memory param = curveContract.curveParameters();
+        logParameter(param, "after initialize");
+        vm.startPrank(owner);
+        curveContract.updateFeeConfig(ActionType.BUY_TOKEN, 0, 0, 0);
+        curveContract.updateFeeConfig(ActionType.SELL_TOKEN, 0, 0, 0);
+        curveContract.updateFeeConfig(ActionType.ADD_LIQUIDITY, 0, 0, 0);
+        curveContract.updateFeeConfig(ActionType.REMOVE_LIQUIDITY, 0, 0, 0);
+        vm.stopPrank();
+
+
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e20, reserve + additionalReserve);
+        param = curveContract.curveParameters();
+        logParameter(param, "after buy token");
+
+        uint256 newInvariant = param.reserve.divDown((param.supply).powDown(param.parameterUtilization));
+        console2.log("newInvariant:", newInvariant);
+
+        uint256 _parameterUtilization = param.price.mulDown(param.supply).divDown(param.reserve);
+
+        // require(_parameterUtilization < ONE_UINT, ERR_UTILIZATION_INVALID);
+        uint256 _parameterInvariant = param.reserve.divDown(param.supply.powDown(_parameterUtilization));
+
+        console2.log("new calc _parameterUtilization:", _parameterUtilization);
+        console2.log("new calc _parameterInvariant:", _parameterInvariant);
+
+        curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
+        // CurveParameter memory param = curveContract.curveParameters();
+        param = curveContract.curveParameters();
+        logParameter(param, "after add liquidity");
+
+
+
+
+        tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
+        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
+        param = curveContract.curveParameters();
+        logParameter(param, "after sell token");
+
+        curveContract.removeLiquidity(recipient, curveContract.balanceOf(recipient), 1e30);
+        param = curveContract.curveParameters();
+        logParameter(param, "after remove liquidity");
     }
 
     function logParameter(CurveParameter memory param, string memory desc) private {

@@ -3,9 +3,9 @@ pragma solidity ^0.8.18;
 
 uint256 constant MIN_INPUT_AMOUNT = 1e14; // 0.0001
 uint256 constant ONE_UINT = 1e18;
-uint256 constant LP_FEE_PERCENT = 25e14;
-uint256 constant STAKE_FEE_PERCENT = 25e14;
-uint256 constant PROTOCOL_FEE_PERCENT = 5e15;
+uint256 constant LP_FEE_PERCENT = 5e16;
+uint256 constant STAKE_FEE_PERCENT = 5e16;
+uint256 constant PROTOCOL_FEE_PERCENT = 2e16;
 uint256 constant MAX_FEE_PERCENT = 1e17;
 uint256 constant ALLOWED_INVARIANT_CHANGE = 1e10;
 uint256 constant ALLOWED_INVARIANT_CHANGE_PERCENT = 1e12; //0.000001
