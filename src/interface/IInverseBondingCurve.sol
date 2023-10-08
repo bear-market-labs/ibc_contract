@@ -8,17 +8,25 @@ import "../Constants.sol";
 interface IInverseBondingCurve {
     function addLiquidity(address recipient, uint256 minPriceLimit) external payable;
 
-    function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external;
+    function removeLiquidity(address recipient, uint256 maxPriceLimit) external;
 
-    function buyTokens(address recipient, uint256 maxPriceLimit, uint256 maxReserveLimit) external payable;
+    function buyTokens(address recipient, uint256 maxPriceLimit) external payable;
 
-    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit, uint256 minReserveLimit) external;
+    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external;
 
     function stake(uint256 amount) external;
 
     function unstake(uint256 amount) external;
 
     function claimReward(address recipient) external;
+
+    // /**
+    //  * @dev Returns the amount of tokens in existence.
+    //  */
+    // function totalSupply() external view returns (uint256);
+
+    function liquidityPositionOf(address account) external view returns (uint256 lpTokenAmount, uint256 inverseTokenCredit);
+
 
     function stakingBalanceOf(address holder) external view returns (uint256);
 

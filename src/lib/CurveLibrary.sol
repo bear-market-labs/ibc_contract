@@ -82,6 +82,12 @@ library CurveLibrary {
         // return (diff > ALLOWED_INVARIANT_CHANGE);
     }
 
+    function isValueChanged(uint256 value, uint256 newValue, uint256 allowedChangePercent) public pure returns (bool){
+        uint256 diff = newValue > value ? newValue - value : value - newValue;
+
+        return (diff.divDown(value) > allowedChangePercent);
+    }
+
     function initializeRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState) public {
         feeState[uint256(FeeType.INVERSE_TOKEN)].emaRewardUpdateBlockNumber = block.number;
         feeState[uint256(FeeType.RESERVE)].emaRewardUpdateBlockNumber = block.number;

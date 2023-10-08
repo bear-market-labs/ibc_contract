@@ -64,7 +64,7 @@ contract InverseBondingCurveFuzzTest is Test {
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e19, 1e19);
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e19);
     }
 
     function testFuzz(uint256 additionalReserve, uint256 buyReserve) private {
@@ -80,11 +80,12 @@ contract InverseBondingCurveFuzzTest is Test {
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e20, reserve + additionalReserve);
-        curveContract.removeLiquidity(recipient, curveContract.balanceOf(recipient), 1e19);
-
         tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
-        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e20);
+        curveContract.removeLiquidity(recipient, 1e19);
+
+        // tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
+        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0);
     }
 
     function testSpecific() private {
@@ -109,7 +110,7 @@ contract InverseBondingCurveFuzzTest is Test {
         param = curveContract.curveParameters();
         logParameter(param, "after add liquidity");
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e20, reserve + additionalReserve);
+        curveContract.buyTokens{value: buyReserve}(recipient, 1e20);
         param = curveContract.curveParameters();
         logParameter(param, "after buy token");
 
@@ -124,17 +125,18 @@ contract InverseBondingCurveFuzzTest is Test {
         console2.log("new calc _parameterUtilization:", _parameterUtilization);
         console2.log("new calc _parameterInvariant:", _parameterInvariant);
 
-        curveContract.removeLiquidity(recipient, curveContract.balanceOf(recipient), 1e19);
+        tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
+        curveContract.removeLiquidity(recipient, 1e19);
         param = curveContract.curveParameters();
         logParameter(param, "after remove liquidity");
 
-        tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
-        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0, 0);
+       
+        curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0);
         param = curveContract.curveParameters();
         logParameter(param, "after sell token");
     }
 
-    function logParameter(CurveParameter memory param, string memory desc) private {
+    function logParameter(CurveParameter memory param, string memory desc) private pure {
         console2.log(desc);
         console2.log("  reserve:", param.reserve);
         console2.log("  supply:", param.supply);

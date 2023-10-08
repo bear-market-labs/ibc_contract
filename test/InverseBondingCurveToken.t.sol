@@ -65,6 +65,11 @@ contract InverseBondingCurveTokenTest is Test {
     function testBurnFrom() public {
         vm.startPrank(owner);
         tokenContract.mint(nonOwner, 1);
+        vm.stopPrank();
+        vm.startPrank(nonOwner);
+        tokenContract.approve(owner, 1);
+        vm.stopPrank();
+        vm.startPrank(owner);
         tokenContract.burnFrom(nonOwner, 1);
         assertEq(tokenContract.balanceOf(nonOwner), 0);
         vm.stopPrank();

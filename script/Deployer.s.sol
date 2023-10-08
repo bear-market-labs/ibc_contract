@@ -18,9 +18,9 @@ contract DeployerScript is Script {
         vm.startBroadcast(privateKey);
         address feeOwner = vm.addr(privateKey);
 
-        uint256 virtualReserve = 2e18;
-        uint256 supply = 1e18;
-        uint256 price = 1e18;
+        uint256 virtualReserve = 2e22;
+        uint256 supply = 1e21;
+        uint256 price = 1e19;
 
         Deployer deployer = new Deployer();
 

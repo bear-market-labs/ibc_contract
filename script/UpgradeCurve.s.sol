@@ -20,7 +20,8 @@ contract UpgradeCurve is Script {
 
         InverseBondingCurve curveContract = InverseBondingCurve(proxyContractAddress);
 
-        console2.log("LP balance:", curveContract.balanceOf(oneLiqudityProvider));
+        (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(oneLiqudityProvider);
+        console2.log("LP balance:", lpBalance);
         console2.log(
             "LP IBC balance:",
             InverseBondingCurveToken(curveContract.inverseTokenAddress()).balanceOf(oneLiqudityProvider)
@@ -28,7 +29,8 @@ contract UpgradeCurve is Script {
         console2.log("IBC token address remain:", curveContract.inverseTokenAddress());
         curveContract.upgradeTo(newCurveContractAddress);
         console2.log("IBC token address remain:", curveContract.inverseTokenAddress());
-        console2.log("LP balance after upgrade:", curveContract.balanceOf(oneLiqudityProvider));
+        (lpBalance, ibcCredit) = curveContract.liquidityPositionOf(oneLiqudityProvider);
+        console2.log("LP balance after upgrade:", lpBalance);
         console2.log(
             "LP IBC balance after upgrade:",
             InverseBondingCurveToken(curveContract.inverseTokenAddress()).balanceOf(oneLiqudityProvider)

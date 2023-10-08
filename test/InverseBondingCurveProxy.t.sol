@@ -38,10 +38,10 @@ contract InverseBondingCurveProxyTest is Test {
         curveContract.initialize(2e18, 1e18, 1e18, address(tokenContract), otherRecipient);
     }
 
-    function testSymbol() public {
-        console2.log("Symbol", curveContract.symbol());
-        assertEq(curveContract.symbol(), "IBCLP");
-    }
+    // function testSymbol() public {
+    //     console2.log("Symbol", curveContract.symbol());
+    //     assertEq(curveContract.symbol(), "IBCLP");
+    // }
 
     function testInverseTokenSymbol() public {
         InverseBondingCurveToken tokenContractAddr = InverseBondingCurveToken(curveContract.inverseTokenAddress());

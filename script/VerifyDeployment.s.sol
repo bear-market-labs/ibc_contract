@@ -18,10 +18,11 @@ contract VerifyDeployment is Script {
         vm.startBroadcast(privateKey);
         address feeOwner = vm.addr(privateKey);
 
-        uint256 virtualReserve = 2e18;
-        uint256 supply = 1e18;
+        uint256 virtualReserve = 2e22;
+        uint256 supply = 1e21;
+        uint256 price = 1e19;
 
-        Deployer deployer = Deployer(vm.parseAddress("0x1d460d731bd5a0ff2ca07309daeb8641a7b175a1"));
+        Deployer deployer = Deployer(vm.parseAddress("0x82bd83ec6d4bcc8eab6f6cf7565efe1e41d92ce5"));
 
         (address curveContractAddress, address tokenContractAddress, address proxyContractAddress) =
             deployer.getDeployedContracts();
