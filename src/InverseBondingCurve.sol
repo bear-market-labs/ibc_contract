@@ -200,21 +200,24 @@ contract InverseBondingCurve is
             revert PriceOutOfLimit(_currentPrice(), minPriceLimit);
         }
 
-        uint256 currentIbcSupply = _virtualInverseTokenTotalSupply();
+        // uint256 currentIbcSupply = _virtualInverseTokenTotalSupply();
         uint256 fee = _calculateAndUpdateFee(msg.value, ActionType.ADD_LIQUIDITY);
 
         uint256 reserveAdded = msg.value - fee;
-        uint256 newReserve = _reserveBalance + reserveAdded;
-        uint256 mintToken = reserveAdded.mulDown(_virtualLpTotalSupply()).divDown(_reserveBalance);
-        uint256 inverseTokenCredit = reserveAdded.mulDown(currentIbcSupply).divDown(_reserveBalance);
+        // uint256 newReserve = _reserveBalance + reserveAdded;
+        (uint256 mintToken, uint256 inverseTokenCredit) = _calculateLpAddition(reserveAdded);
+        // uint256 mintToken = reserveAdded.mulDown(_virtualLpTotalSupply()).divDown(_reserveBalance);
+        // uint256 inverseTokenCredit = reserveAdded.mulDown(currentIbcSupply).divDown(_reserveBalance);
 
 
         _updateLpReward(recipient);
         _createLpPosition(mintToken, inverseTokenCredit, recipient);
 
-        _parameterInvariant = newReserve.divDown(_virtualInverseTokenTotalSupply().powDown(_parameterUtilization));
-        _reserveBalance = newReserve;
-         _checkUtilizationNotChanged();
+        // _parameterInvariant = newReserve.divDown(_virtualInverseTokenTotalSupply().powDown(_parameterUtilization));
+        // _reserveBalance = newReserve;
+        _increaseReserve(reserveAdded);
+        _updateInvariant();
+        _checkUtilizationNotChanged();
 
         emit LiquidityAdded(msg.sender, recipient, msg.value, mintToken, _parameterUtilization, _parameterInvariant);
     }
@@ -232,25 +235,28 @@ contract InverseBondingCurve is
             revert PriceOutOfLimit(_currentPrice(), maxPriceLimit);
         }
         
-        uint256 currentIbcSupply = _virtualInverseTokenTotalSupply();
+        // uint256 currentIbcSupply = _virtualInverseTokenTotalSupply();
         uint256 inverseTokenCredit = _lpPositions[msg.sender].inverseTokenCredit;
 
-        uint256 reserveRemoved = burnTokenAmount.mulDown(_reserveBalance).divDown(_virtualLpTotalSupply());
-        uint256 inverseTokenBurned = burnTokenAmount.mulDown(currentIbcSupply).divDown(_virtualLpTotalSupply());
-        if (reserveRemoved > _reserveBalance - _virtualReserveBalance) {
-            revert InsufficientBalance();
-        }
+        // uint256 reserveRemoved = burnTokenAmount.mulDown(_reserveBalance).divDown(_virtualLpTotalSupply());
+        // uint256 inverseTokenBurned = burnTokenAmount.mulDown(currentIbcSupply).divDown(_virtualLpTotalSupply());
+        // if (reserveRemoved > _reserveBalance - _virtualReserveBalance) {
+        //     revert InsufficientBalance();
+        // }
+        (uint256 reserveRemoved, uint256 inverseTokenBurned) = _calculateLpRemoval(burnTokenAmount);
         uint256 fee = _calculateAndUpdateFee(reserveRemoved, ActionType.REMOVE_LIQUIDITY);
         uint256 reserveToUser = reserveRemoved - fee;
 
-        uint256 newReserve = _reserveBalance - reserveRemoved;
+        // uint256 newReserve = _reserveBalance - reserveRemoved;
 
         _updateLpReward(msg.sender); 
         _removeLpPosition();
 
 
-        _parameterInvariant = newReserve.divDown(_virtualInverseTokenTotalSupply().powDown(_parameterUtilization));
-        _reserveBalance = newReserve;
+        // _parameterInvariant = newReserve.divDown(_virtualInverseTokenTotalSupply().powDown(_parameterUtilization));
+        // _reserveBalance = newReserve;
+        _decreaseReserve(reserveRemoved);
+        _updateInvariant();
 
         
         int256 inverseTokenAmountOut = inverseTokenCredit >= inverseTokenBurned? int256(inverseTokenCredit - inverseTokenBurned) : -int256(inverseTokenBurned - inverseTokenCredit);
@@ -571,6 +577,18 @@ contract InverseBondingCurve is
         return _totalStaked;
     }
 
+    function _increaseReserve(uint256 amount) private {
+        _reserveBalance += amount;
+    }
+
+    function _decreaseReserve(uint256 amount) private {
+        _reserveBalance -= amount;
+    }
+
+    function _updateInvariant() private {
+         _parameterInvariant = _reserveBalance.divDown(_virtualInverseTokenTotalSupply().powDown(_parameterUtilization));
+    }
+
     function _checkUtilizationNotChanged() private {
         uint256 newParameterUtilization = _currentPrice().mulDown(_virtualInverseTokenTotalSupply()).divDown(_reserveBalance);
         if (CurveLibrary.isValueChanged(_parameterUtilization, newParameterUtilization, ALLOWED_UTILIZATION_CHANGE_PERCENT)) {
@@ -597,6 +615,19 @@ contract InverseBondingCurve is
         _totalLpSupply -=  _lpPositions[msg.sender].lpTokenAmount;
         _totalLpCreditToken -= _lpPositions[msg.sender].inverseTokenCredit;
         _lpPositions[msg.sender] = LpPosition(0, 0);
+    }
+
+    function _calculateLpAddition(uint256 reserveAdded) private view returns(uint256 mintToken, uint256 inverseTokenCredit) {
+        mintToken = reserveAdded.mulDown(_virtualLpTotalSupply()).divDown(_reserveBalance);
+        inverseTokenCredit = reserveAdded.mulDown(_virtualInverseTokenTotalSupply()).divDown(_reserveBalance);
+    }
+
+    function _calculateLpRemoval(uint256 burnLpTokenAmount) private view returns(uint256 reserveRemoved, uint256 inverseTokenBurned){
+        reserveRemoved = burnLpTokenAmount.mulDown(_reserveBalance).divDown(_virtualLpTotalSupply());
+        inverseTokenBurned = burnLpTokenAmount.mulDown(_virtualInverseTokenTotalSupply()).divDown(_virtualLpTotalSupply());
+        if (reserveRemoved > _reserveBalance - _virtualReserveBalance) {
+            revert InsufficientBalance();
+        }
     }
 
     function _calculateAndUpdateFee(uint256 amount, ActionType action) private returns (uint256 totalFee) {
