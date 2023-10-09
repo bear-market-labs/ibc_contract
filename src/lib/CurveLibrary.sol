@@ -7,21 +7,23 @@ import "../FeeState.sol";
 import "../Constants.sol";
 import "../Enums.sol";
 
+/**
+ * @author  .
+ * @title   .
+ * @dev     .
+ * @notice  .
+ */
 library CurveLibrary {
     using FixedPoint for uint256;
 
-    function _updateReward(address user, uint256 userBalance, FeeState storage state, RewardType rewardType) private {
-        if (userBalance > 0) {
-            uint256 reward = state.globalFeeIndexes[uint256(rewardType)].sub(
-                state.feeIndexStates[uint256(rewardType)][user]
-            ).mulDown(userBalance);
-            state.pendingRewards[uint256(rewardType)][user] += reward;
-            state.feeIndexStates[uint256(rewardType)][user] = state.globalFeeIndexes[uint256(rewardType)];
-        } else {
-            state.feeIndexStates[uint256(rewardType)][user] = state.globalFeeIndexes[uint256(rewardType)];
-        }
-    }
-
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   user  .
+     * @param   userBalance  .
+     * @param   feeState  .
+     * @param   rewardType  .
+     */
     function updateReward(
         address user,
         uint256 userBalance,
@@ -32,21 +34,18 @@ library CurveLibrary {
         _updateReward(user, userBalance, feeState[uint256(FeeType.INVERSE_TOKEN)], rewardType);
     }
 
-    function _calculatePendingReward(
-        address recipient,
-        FeeState storage state,
-        uint256 userBalance,
-        RewardType rewardType
-    ) private view returns (uint256) {
-        uint256 reward = state.pendingRewards[uint256(rewardType)][recipient];
-        if (userBalance > 0) {
-            reward += state.globalFeeIndexes[uint256(rewardType)].sub(
-                state.feeIndexStates[uint256(rewardType)][recipient]
-            ).mulDown(userBalance);
-        }
-        return reward;
-    }
-
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   recipient  .
+     * @param   feeState  .
+     * @param   userLpBalance  .
+     * @param   userStakingBalance  .
+     * @return  inverseTokenForLp  .
+     * @return  inverseTokenForStaking  .
+     * @return  reserveForLp  .
+     * @return  reserveForStaking  .
+     */
     function calculatePendingReward(
         address recipient,
         FeeState[MAX_FEE_TYPE_COUNT] storage feeState,
@@ -74,17 +73,35 @@ library CurveLibrary {
         );
     }
 
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   value  .
+     * @param   newValue  .
+     * @param   allowedChangePercent  .
+     * @return  bool  .
+     */
     function isValueChanged(uint256 value, uint256 newValue, uint256 allowedChangePercent) public pure returns (bool) {
         uint256 diff = newValue > value ? newValue - value : value - newValue;
 
         return (diff.divDown(value) > allowedChangePercent);
     }
 
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   feeState  .
+     */
     function initializeRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState) public {
         feeState[uint256(FeeType.INVERSE_TOKEN)].emaRewardUpdateBlockNumber = block.number;
         feeState[uint256(FeeType.RESERVE)].emaRewardUpdateBlockNumber = block.number;
     }
 
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   feeState  .
+     */
     function updateRewardEMA(FeeState storage feeState) public {
         if (block.number != feeState.emaRewardUpdateBlockNumber) {
             uint256 alpha = _calculateParameterAlpha(feeState);
@@ -99,11 +116,89 @@ library CurveLibrary {
         }
     }
 
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   feeState  .
+     * @param   rewardType  .
+     * @return  inverseTokenReward  .
+     * @return  reserveReward  .
+     */
+    function calculateBlockRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState, RewardType rewardType)
+        public
+        view
+        returns (uint256 inverseTokenReward, uint256 reserveReward)
+    {
+        uint256 alpha = _calculateParameterAlpha(feeState[uint256(FeeType.INVERSE_TOKEN)]);
+        inverseTokenReward = _calculateEMA(feeState[uint256(FeeType.INVERSE_TOKEN)], rewardType, alpha);
+
+        alpha = _calculateParameterAlpha(feeState[uint256(FeeType.RESERVE)]);
+        reserveReward = _calculateEMA(feeState[uint256(FeeType.RESERVE)], rewardType, alpha);
+    }
+
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   user  .
+     * @param   userBalance  .
+     * @param   state  .
+     * @param   rewardType  .
+     */
+    function _updateReward(address user, uint256 userBalance, FeeState storage state, RewardType rewardType) private {
+        if (userBalance > 0) {
+            uint256 reward = state.globalFeeIndexes[uint256(rewardType)].sub(
+                state.feeIndexStates[uint256(rewardType)][user]
+            ).mulDown(userBalance);
+            state.pendingRewards[uint256(rewardType)][user] += reward;
+            state.feeIndexStates[uint256(rewardType)][user] = state.globalFeeIndexes[uint256(rewardType)];
+        } else {
+            state.feeIndexStates[uint256(rewardType)][user] = state.globalFeeIndexes[uint256(rewardType)];
+        }
+    }
+
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   recipient  .
+     * @param   state  .
+     * @param   userBalance  .
+     * @param   rewardType  .
+     * @return  uint256  .
+     */
+    function _calculatePendingReward(
+        address recipient,
+        FeeState storage state,
+        uint256 userBalance,
+        RewardType rewardType
+    ) private view returns (uint256) {
+        uint256 reward = state.pendingRewards[uint256(rewardType)][recipient];
+        if (userBalance > 0) {
+            reward += state.globalFeeIndexes[uint256(rewardType)].sub(
+                state.feeIndexStates[uint256(rewardType)][recipient]
+            ).mulDown(userBalance);
+        }
+        return reward;
+    }
+
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   feeState  .
+     * @return  alpha  .
+     */
     function _calculateParameterAlpha(FeeState storage feeState) private view returns (uint256 alpha) {
         int256 exponent = int256((block.number - feeState.emaRewardUpdateBlockNumber).divDown(DAILY_BLOCK_COUNT));
         alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? 0 : ONE_UINT.sub(uint256(LogExpMath.exp(-exponent)));
     }
 
+    /**
+     * @notice  .
+     * @dev     .
+     * @param   feeState  .
+     * @param   rewardType  .
+     * @param   alpha  .
+     * @return  rewardEMA  .
+     */
     function _calculateEMA(FeeState storage feeState, RewardType rewardType, uint256 alpha)
         private
         view
@@ -123,17 +218,5 @@ library CurveLibrary {
         } else {
             rewardEMA = previousEMA.sub(alpha.mulDown(previousEMA.sub(rewardSinceLastUpdatePerBlock)));
         }
-    }
-
-    function calculateBlockRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState, RewardType rewardType)
-        public
-        view
-        returns (uint256 inverseTokenReward, uint256 reserveReward)
-    {
-        uint256 alpha = _calculateParameterAlpha(feeState[uint256(FeeType.INVERSE_TOKEN)]);
-        inverseTokenReward = _calculateEMA(feeState[uint256(FeeType.INVERSE_TOKEN)], rewardType, alpha);
-
-        alpha = _calculateParameterAlpha(feeState[uint256(FeeType.RESERVE)]);
-        reserveReward = _calculateEMA(feeState[uint256(FeeType.RESERVE)], rewardType, alpha);
     }
 }

@@ -16,7 +16,7 @@ contract VerifyDeployment is Script {
         string memory seedPhrase = vm.readFile(".secret");
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
         vm.startBroadcast(privateKey);
-        address feeOwner = vm.addr(privateKey);
+        // address feeOwner = vm.addr(privateKey);
 
         uint256 virtualReserve = 2e22;
         uint256 supply = 1e21;
@@ -41,7 +41,7 @@ contract VerifyDeployment is Script {
 
         require(param.virtualReserve == virtualReserve, "Reserve Parameter incorrect");
         require(param.virtualSupply == supply, "Supply Parameter incorrect");
-        require(param.virtualSupply == supply, "Supply Parameter incorrect");
+        require(param.price == price, "Initial Price incorrect");
 
         vm.stopBroadcast();
     }

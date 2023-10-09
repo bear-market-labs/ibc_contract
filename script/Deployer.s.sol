@@ -16,11 +16,11 @@ contract DeployerScript is Script {
         string memory seedPhrase = vm.readFile(".secret");
         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
         vm.startBroadcast(privateKey);
-        address feeOwner = vm.addr(privateKey);
+        // address feeOwner = vm.addr(privateKey);
 
-        uint256 virtualReserve = 2e22;
-        uint256 supply = 1e21;
-        uint256 price = 1e19;
+        // uint256 virtualReserve = 2e22;
+        // uint256 supply = 1e21;
+        // uint256 price = 1e19;
 
         Deployer deployer = new Deployer();
 
