@@ -74,15 +74,7 @@ library CurveLibrary {
         );
     }
 
-    function isInvariantChanged(uint256 parameterInvariant, uint256 newInvariant) public pure returns (bool) {
-        uint256 diff =
-            newInvariant > parameterInvariant ? newInvariant - parameterInvariant : parameterInvariant - newInvariant;
-
-        return (diff.divDown(parameterInvariant) > ALLOWED_INVARIANT_CHANGE_PERCENT);
-        // return (diff > ALLOWED_INVARIANT_CHANGE);
-    }
-
-    function isValueChanged(uint256 value, uint256 newValue, uint256 allowedChangePercent) public pure returns (bool){
+    function isValueChanged(uint256 value, uint256 newValue, uint256 allowedChangePercent) public pure returns (bool) {
         uint256 diff = newValue > value ? newValue - value : value - newValue;
 
         return (diff.divDown(value) > allowedChangePercent);

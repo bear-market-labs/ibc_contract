@@ -22,7 +22,6 @@ contract DeployScript is Script {
         uint256 supply = 1e21;
         uint256 price = 1e19;
 
-
         Deployer deployer = Deployer(vm.parseAddress("0x82bd83ec6d4bcc8eab6f6cf7565efe1e41d92ce5"));
 
         deployer.deploy(

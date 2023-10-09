@@ -67,7 +67,7 @@ contract InverseBondingCurveFuzzTest is Test {
         curveContract.buyTokens{value: buyReserve}(recipient, 1e19);
     }
 
-    function testFuzz(uint256 additionalReserve, uint256 buyReserve) private {
+    function testFuzz(uint256 additionalReserve, uint256 buyReserve) public {
         uint256 reserve = 2e22; // 2000
         uint256 supply = 1e21; //
         uint256 price = 1e19;
@@ -80,15 +80,16 @@ contract InverseBondingCurveFuzzTest is Test {
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
+        
         curveContract.buyTokens{value: buyReserve}(recipient, 1e20);
+        tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
         curveContract.removeLiquidity(recipient, 1e19);
 
         // tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
         curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0);
     }
 
-    function testSpecific() private {
+    function testSpecific() public {
         uint256 reserve = 2e22; // 2000
         uint256 supply = 1e21; //
         uint256 price = 1e19;
@@ -130,7 +131,6 @@ contract InverseBondingCurveFuzzTest is Test {
         param = curveContract.curveParameters();
         logParameter(param, "after remove liquidity");
 
-       
         curveContract.sellTokens(recipient, tokenContract.balanceOf(recipient), 0);
         param = curveContract.curveParameters();
         logParameter(param, "after sell token");

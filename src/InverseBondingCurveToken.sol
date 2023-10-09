@@ -30,7 +30,7 @@ contract InverseBondingCurveToken is ERC20Burnable, Ownable, Pausable {
     }
 
     function burnFrom(address account, uint256 amount) public override onlyOwner whenNotPaused {
-        super.burnFrom(account, amount); 
+        super.burnFrom(account, amount);
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override whenNotPaused {

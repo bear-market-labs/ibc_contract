@@ -25,8 +25,10 @@ interface IInverseBondingCurve {
     //  */
     // function totalSupply() external view returns (uint256);
 
-    function liquidityPositionOf(address account) external view returns (uint256 lpTokenAmount, uint256 inverseTokenCredit);
-
+    function liquidityPositionOf(address account)
+        external
+        view
+        returns (uint256 lpTokenAmount, uint256 inverseTokenCredit);
 
     function stakingBalanceOf(address holder) external view returns (uint256);
 

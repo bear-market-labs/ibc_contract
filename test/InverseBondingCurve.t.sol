@@ -369,8 +369,7 @@ contract InverseBondingCurveTest is Test {
         balanceAfter = tokenContract.balanceOf(thirdRecipient);
         uint256 thirdRecipientFee = balanceAfter - balanceBefore;
         (lpBalance, ibcCredit) = curveContract.liquidityPositionOf(thirdRecipient);
-        uint256 secondSellFeeForthirdRecipient =
-            1e15 * lpBalance / param.lpSupply;
+        uint256 secondSellFeeForthirdRecipient = 1e15 * lpBalance / param.lpSupply;
         vm.stopPrank();
 
         assertEqWithError(firstSellFee + secondSellFee, otherRecipientFee);
@@ -503,7 +502,8 @@ contract InverseBondingCurveTest is Test {
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
         uint256 balanceChange = balanceAfter - balanceBefore;
 
-        uint256 accumulatedTokenFee = uint256(balanceChange.divDown(1e18 - FEE_PERCENT.mulDown(3e18)).mulDown(FEE_PERCENT));
+        uint256 accumulatedTokenFee =
+            uint256(balanceChange.divDown(1e18 - FEE_PERCENT.mulDown(3e18)).mulDown(FEE_PERCENT));
         (uint256 inverseTokenReward, uint256 reserveReward) = curveContract.rewardOfProtocol();
 
         assertEqWithError(inverseTokenReward, accumulatedTokenFee);
@@ -516,7 +516,7 @@ contract InverseBondingCurveTest is Test {
         vm.stopPrank();
         uint256 reserveBalanceAfter = otherRecipient.balance;
         uint256 tokenBalanceAfter = tokenContract.balanceOf(otherRecipient);
-        assertEq(reserveBalanceAfter - reserveBalanceBefore, reserveReward);        
+        assertEq(reserveBalanceAfter - reserveBalanceBefore, reserveReward);
         assertEq(tokenBalanceAfter - tokenBalanceBefore, inverseTokenReward);
     }
 
@@ -531,7 +531,8 @@ contract InverseBondingCurveTest is Test {
         uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
         uint256 balanceChange = balanceAfter - balanceBefore;
 
-        uint256 accumulatedTokenFee = uint256(balanceChange.divDown(1e18 - FEE_PERCENT.mulDown(3e18)).mulDown(FEE_PERCENT));
+        uint256 accumulatedTokenFee =
+            uint256(balanceChange.divDown(1e18 - FEE_PERCENT.mulDown(3e18)).mulDown(FEE_PERCENT));
 
         vm.startPrank(otherRecipient);
         tokenContract.approve(address(curveContract), 1e18);
