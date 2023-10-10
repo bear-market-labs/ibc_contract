@@ -8,5 +8,9 @@ fs_permissions = [{ access = "read", path = "./"}]
 
 solc = "0.8.18"
 
+[fmt]
+line_length = 120
+tab_width = 4
+
 [fuzz]
 runs = 10000

@@ -99,7 +99,7 @@ contract InverseBondingCurve is
         _virtualReserveBalance = virtualReserve;
         _virtualSupply = supply;
         _reserveBalance = virtualReserve;
-        _virtualLpSupply = price.mulDown(virtualReserve.sub(price.mulDown(supply)));
+        _virtualLpSupply = price.mulDown(virtualReserve - (price.mulDown(supply)));
 
         _parameterUtilization = price.mulDown(supply).divDown(_reserveBalance);
         if (_parameterUtilization >= ONE_UINT) {
@@ -168,7 +168,8 @@ contract InverseBondingCurve is
 
     /**
      * @notice  Add reserve liquidity to inverse bonding curve
-     * @dev     LP will get virtual LP token(non-transferable), and one account can only hold one LP position(Need to close and reopen if user want to change)
+     * @dev     LP will get virtual LP token(non-transferable),
+     *          and one account can only hold one LP position(Need to close and reopen if user want to change)
      * @param   recipient : Account to receive LP token
      * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
      */
@@ -179,7 +180,7 @@ contract InverseBondingCurve is
         if (_currentPrice() < minPriceLimit) revert PriceOutOfLimit(_currentPrice(), minPriceLimit);
 
         uint256 fee = _calcAndUpdateFee(msg.value, ActionType.ADD_LIQUIDITY);
-        uint256 reserveAdded = msg.value.sub(fee);
+        uint256 reserveAdded = msg.value - fee;
         (uint256 mintToken, uint256 inverseTokenCredit) = _calcLpAddition(reserveAdded);
 
         _updateLpReward(recipient);
@@ -209,7 +210,7 @@ contract InverseBondingCurve is
         (uint256 reserveRemoved, uint256 inverseTokenBurned) = _calcLpRemoval(burnTokenAmount);
         uint256 newSupply = _virtualInverseTokenTotalSupply() - inverseTokenBurned;
         uint256 fee = _calcAndUpdateFee(reserveRemoved, ActionType.REMOVE_LIQUIDITY);
-        uint256 reserveToUser = reserveRemoved.sub(fee);
+        uint256 reserveToUser = reserveRemoved - fee;
 
         _updateLpReward(msg.sender);
         _removeLpPosition();
@@ -250,7 +251,7 @@ contract InverseBondingCurve is
 
         uint256 newToken = _calcMintToken(msg.value);
         uint256 fee = _calcAndUpdateFee(newToken, ActionType.BUY_TOKEN);
-        uint256 mintToken = newToken.sub(fee);
+        uint256 mintToken = newToken - fee;
         _increaseReserve(msg.value);
 
         if (msg.value.divDown(mintToken) > maxPriceLimit) {
@@ -278,7 +279,7 @@ contract InverseBondingCurve is
         if (recipient == address(0)) revert EmptyAddress();
 
         uint256 fee = _calcAndUpdateFee(amount, ActionType.SELL_TOKEN);
-        uint256 burnToken = amount.sub(fee);
+        uint256 burnToken = amount - fee;
 
         uint256 returnLiquidity = _calcBurnToken(burnToken);
         _decreaseReserve(returnLiquidity);
@@ -828,7 +829,7 @@ contract InverseBondingCurve is
         uint256 newSupply =
             newBalance.divDown(_reserveBalance).powDown(ONE_UINT.divDown(_parameterUtilization)).mulDown(currentSupply);
 
-        return newSupply > currentSupply ? newSupply.sub(currentSupply) : 0;
+        return newSupply > currentSupply ? newSupply - currentSupply : 0;
     }
 
     /**
@@ -840,9 +841,9 @@ contract InverseBondingCurve is
     function _calcBurnToken(uint256 amount) private view returns (uint256) {
         uint256 currentSupply = _virtualInverseTokenTotalSupply();
         uint256 newReserve =
-            (currentSupply.sub(amount).divUp(currentSupply)).powUp(_parameterUtilization).mulUp(_reserveBalance);
+            ((currentSupply - amount).divUp(currentSupply)).powUp(_parameterUtilization).mulUp(_reserveBalance);
 
-        return _reserveBalance > newReserve ? _reserveBalance.sub(newReserve) : 0;
+        return _reserveBalance > newReserve ? _reserveBalance - newReserve : 0;
     }
 
     /**

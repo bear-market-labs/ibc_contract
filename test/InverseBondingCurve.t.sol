@@ -271,15 +271,14 @@ contract InverseBondingCurveTest is Test {
         CurveParameter memory param = curveContract.curveParameters();
         assertEqWithError(param.price, 1e18);
 
-        curveContract.buyTokens{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 1e18);       
+        curveContract.buyTokens{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 1e18);
 
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e17);
 
         vm.startPrank(otherRecipient);
-         tokenContract.approve(address(curveContract), 1e19);
+        tokenContract.approve(address(curveContract), 1e19);
         curveContract.sellTokens(otherRecipient, tokenContract.balanceOf(otherRecipient), 1e17);
         vm.stopPrank();
-
 
         uint256 balanceBefore = otherRecipient.balance;
         uint256 tokenBalanceBefore = tokenContract.balanceOf(otherRecipient);
@@ -293,7 +292,7 @@ contract InverseBondingCurveTest is Test {
         uint256 balanceAfter = otherRecipient.balance;
         assertGt(balanceAfter, balanceBefore);
         assertGt(tokenContract.balanceOf(otherRecipient), tokenBalanceBefore);
-    }    
+    }
 
     function testBuyTokens() public {
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);

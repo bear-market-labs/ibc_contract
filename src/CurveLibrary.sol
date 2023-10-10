@@ -145,8 +145,8 @@ library CurveLibrary {
         private
     {
         if (userBalance > 0) {
-            uint256 reward = state.globalFeeIndexes[uint256(rewardType)].sub(
-                state.feeIndexStates[uint256(rewardType)][account]
+            uint256 reward = (
+                state.globalFeeIndexes[uint256(rewardType)] - state.feeIndexStates[uint256(rewardType)][account]
             ).mulDown(userBalance);
             state.pendingRewards[uint256(rewardType)][account] += reward;
             state.feeIndexStates[uint256(rewardType)][account] = state.globalFeeIndexes[uint256(rewardType)];
@@ -171,9 +171,8 @@ library CurveLibrary {
     {
         uint256 reward = state.pendingRewards[uint256(rewardType)][account];
         if (userBalance > 0) {
-            reward += state.globalFeeIndexes[uint256(rewardType)].sub(
-                state.feeIndexStates[uint256(rewardType)][account]
-            ).mulDown(userBalance);
+            reward += (state.globalFeeIndexes[uint256(rewardType)] - state.feeIndexStates[uint256(rewardType)][account])
+                .mulDown(userBalance);
         }
         return reward;
     }
@@ -186,7 +185,7 @@ library CurveLibrary {
      */
     function _calcParameterAlpha(FeeState storage feeState) private view returns (uint256 alpha) {
         int256 exponent = int256((block.number - feeState.emaRewardUpdateBlockNumber).divDown(DAILY_BLOCK_COUNT));
-        alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? 0 : ONE_UINT.sub(uint256(LogExpMath.exp(-exponent)));
+        alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? 0 : ONE_UINT - uint256(LogExpMath.exp(-exponent));
     }
 
     /**
@@ -205,17 +204,17 @@ library CurveLibrary {
         if (block.number > feeState.emaRewardUpdateBlockNumber) {
             uint256 pastBlockCount = block.number - feeState.emaRewardUpdateBlockNumber;
             uint256 previousEMA = feeState.emaReward[uint256(rewardType)];
-            uint256 rewardSinceLastUpdatePerBlock = feeState.totalReward[uint256(rewardType)].sub(
-                feeState.previousReward[uint256(rewardType)]
+            uint256 rewardSinceLastUpdatePerBlock = (
+                feeState.totalReward[uint256(rewardType)] - feeState.previousReward[uint256(rewardType)]
             ).divDown(pastBlockCount * 1e18);
 
             if (rewardSinceLastUpdatePerBlock >= previousEMA) {
-                rewardEMA = previousEMA.add(alpha.mulDown(rewardSinceLastUpdatePerBlock.sub(previousEMA)));
+                rewardEMA = previousEMA + (alpha.mulDown(rewardSinceLastUpdatePerBlock - previousEMA));
             } else {
-                rewardEMA = previousEMA.sub(alpha.mulDown(previousEMA.sub(rewardSinceLastUpdatePerBlock)));
+                rewardEMA = previousEMA - (alpha.mulDown(previousEMA - rewardSinceLastUpdatePerBlock));
             }
-        }else{
+        } else {
             rewardEMA = feeState.emaReward[uint256(rewardType)];
-        }        
+        }
     }
 }
