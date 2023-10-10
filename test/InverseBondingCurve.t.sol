@@ -168,10 +168,10 @@ contract InverseBondingCurveTest is Test {
     }
 
     function testInitialize() public {
-        uint256 price = curveContract.priceOf(1e18);
+        // uint256 price = curveContract.priceOf(1e18);
         CurveParameter memory param = curveContract.curveParameters();
 
-        assertEqWithError(price, 1e18);
+        assertEqWithError(param.price, 1e18);
         assertEqWithError(tokenContract.balanceOf(recipient), 0);
         (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(recipient);
         assertEqWithError(lpBalance, 0);
@@ -188,9 +188,9 @@ contract InverseBondingCurveTest is Test {
         assertEq(curveContract.feeOwner(), address(otherRecipient));
     }
 
-    function testPriceOf() public {
-        assertEqWithError(curveContract.priceOf(1e20), 1e17);
-    }
+    // function testPriceOf() public {
+    //     assertEqWithError(curveContract.priceOf(1e20), 1e17);
+    // }
 
     function testGetImplementation() public {
         assertEq(curveContract.getImplementation(), address(curveContractImpl));

@@ -94,6 +94,20 @@ contract InverseBondingCurveFuzzTest is Test {
         assertGt(param.reserve, param.virtualReserve);
         assertGt(param.supply, param.virtualSupply);
         assertLt(param.price, 1e19);
+
+        curveContract.claimReward(recipient);
+
+        vm.startPrank(otherRecipient);
+        curveContract.claimProtocolReward();
+        vm.stopPrank();
+
+        param = curveContract.curveParameters();
+
+        assertEqWithError(param.parameterUtilization, 5e17);
+        assertEq(param.lpSupply, 0);
+        assertGt(param.reserve, param.virtualReserve);
+        assertGt(param.supply, param.virtualSupply);
+        assertLt(param.price, 1e19);
     }
 
     // function testSpecific() public {

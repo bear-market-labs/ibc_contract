@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import "../src/InverseBondingCurve.sol";
 import "../src/InverseBondingCurveProxy.sol";
 import "../src/InverseBondingCurveToken.sol";
-import "../src/Deployer.sol";
+import "../src/deploy/Deployer.sol";
 import "forge-std/console2.sol";
 
 contract DeployerScript is Script {
