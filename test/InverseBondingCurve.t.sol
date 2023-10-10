@@ -205,8 +205,9 @@ contract InverseBondingCurveTest is Test {
         assertEqWithError(param.price, 1e18);
 
         assertEqWithError(tokenContract.balanceOf(recipient), 0);
-        (uint256 lpBalance,) = curveContract.liquidityPositionOf(recipient);
+        (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(recipient);
         assertEqWithError(lpBalance, 1e18);
+        assertEqWithError(ibcCredit, 1e18);
     }
 
     function testRemoveLiquidity() public {
@@ -232,6 +233,67 @@ contract InverseBondingCurveTest is Test {
         assertEqWithError(lpBalance, 0);
         assertEqWithError(balanceAfter - balanceBefore, uint256(2e18).mulDown(ONE_UINT.sub(FEE_PERCENT.mulDown(3e18))));
     }
+
+    function testRemoveLiquidityWithAdditionalBurn() public {
+        CurveParameter memory param = curveContract.curveParameters();
+        assertEqWithError(param.price, 1e18);
+
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
+        param = curveContract.curveParameters();
+        assertEqWithError(param.price, 1e18);
+
+        curveContract.buyTokens{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 1e18);
+        (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(recipient);
+
+        uint256 balanceBefore = otherRecipient.balance;
+        vm.expectRevert();
+        curveContract.removeLiquidity(otherRecipient, 1e18 + ALLOWED_ERROR);
+
+        curveContract.buyTokens{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
+        vm.expectRevert();
+        curveContract.removeLiquidity(otherRecipient, 1e18 + ALLOWED_ERROR);
+
+        tokenContract.approve(address(curveContract), 1e19);
+        uint256 tokenBalanceBefore = tokenContract.balanceOf(recipient);
+        curveContract.removeLiquidity(otherRecipient, 1e18 + ALLOWED_ERROR);
+
+        (lpBalance, ibcCredit) = curveContract.liquidityPositionOf(recipient);
+
+        assertEq(lpBalance, 0);
+        assertEq(ibcCredit, 0);
+
+        uint256 balanceAfter = otherRecipient.balance;
+        assertGt(balanceAfter, balanceBefore);
+        assertLt(tokenContract.balanceOf(recipient), tokenBalanceBefore);
+    }
+
+    function testRemoveLiquidityGetAdditionalMint() public {
+        CurveParameter memory param = curveContract.curveParameters();
+        assertEqWithError(param.price, 1e18);
+
+        curveContract.buyTokens{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 1e18);       
+
+        curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e17);
+
+        vm.startPrank(otherRecipient);
+         tokenContract.approve(address(curveContract), 1e19);
+        curveContract.sellTokens(otherRecipient, tokenContract.balanceOf(otherRecipient), 1e17);
+        vm.stopPrank();
+
+
+        uint256 balanceBefore = otherRecipient.balance;
+        uint256 tokenBalanceBefore = tokenContract.balanceOf(otherRecipient);
+        curveContract.removeLiquidity(otherRecipient, 1e18 + ALLOWED_ERROR);
+
+        (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(recipient);
+
+        assertEq(lpBalance, 0);
+        assertEq(ibcCredit, 0);
+
+        uint256 balanceAfter = otherRecipient.balance;
+        assertGt(balanceAfter, balanceBefore);
+        assertGt(tokenContract.balanceOf(otherRecipient), tokenBalanceBefore);
+    }    
 
     function testBuyTokens() public {
         uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
