@@ -4,12 +4,13 @@ pragma solidity ^0.8.18;
 import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/utils/Create2.sol";
 
+
 contract Deployer is Ownable {
     event Deployed(address cruveContract, address tokenContract, address proxyContract);
 
-    address _cruveContract;
-    address _proxyContract;
-    address _tokenContract;
+    address private _cruveContract;
+    address private _proxyContract;
+    address private _tokenContract;
 
     constructor() Ownable() {}
 
@@ -17,11 +18,10 @@ contract Deployer is Ownable {
         bytes memory curveContractCode,
         bytes memory tokenContractCode,
         bytes memory proxyContractCode,
-        uint256 virtualReserve,
         uint256 supply,
         uint256 price,
         address protocolFeeOwner
-    ) external onlyOwner {
+    ) external payable onlyOwner {
         bytes32 salt = bytes32(uint256(uint160(msg.sender)) + block.number);
         _cruveContract = Create2.deploy(0, salt, abi.encodePacked(curveContractCode));
 
@@ -29,19 +29,18 @@ contract Deployer is Ownable {
         _tokenContract = Create2.deploy(0, salt, creationCode);
 
         // Create proxy contract and intialize
-        bytes memory data = abi.encodeWithSignature(
-            "initialize(uint256,uint256,uint256,address,address)",
-            virtualReserve,
-            supply,
-            price,
-            _tokenContract,
-            protocolFeeOwner
-        );
-        creationCode = abi.encodePacked(proxyContractCode, abi.encode(_cruveContract, data));
+
+        creationCode = abi.encodePacked(proxyContractCode, abi.encode(_cruveContract, ""));
         _proxyContract = Create2.deploy(0, salt, creationCode);
 
+        bytes memory data = abi.encodeWithSignature(
+            "initialize(uint256,uint256,address,address)", supply, price, _tokenContract, protocolFeeOwner
+        );
+        (bool success,) = _proxyContract.call{value: msg.value}(data);
+        require(success, "Curve contract initialize failed");
+
         // Change owner to external owner
-        (bool success,) = _tokenContract.call(abi.encodeWithSignature("transferOwnership(address)", _proxyContract));
+        (success,) = _tokenContract.call(abi.encodeWithSignature("transferOwnership(address)", _proxyContract));
         require(success, "Token contract owner transfer failed");
 
         (success,) = _proxyContract.call(abi.encodeWithSignature("transferOwnership(address)", owner()));

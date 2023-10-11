@@ -62,12 +62,12 @@ library CurveLibrary {
             uint256 reserveForStaking
         )
     {
-        inverseTokenForLp =
-            _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_TRADE)], lpBalance, RewardType.LP) +
-            _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_LP)], lpBalance, RewardType.LP);
-        inverseTokenForStaking =
-            _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_TRADE)], stakingBalance, RewardType.STAKING) +
-            _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_LP)], stakingBalance, RewardType.STAKING);
+        inverseTokenForLp = _calcPendingReward(
+            recipient, feeState[uint256(FeeType.IBC_FROM_TRADE)], lpBalance, RewardType.LP
+        ) + _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_LP)], lpBalance, RewardType.LP);
+        inverseTokenForStaking = _calcPendingReward(
+            recipient, feeState[uint256(FeeType.IBC_FROM_TRADE)], stakingBalance, RewardType.STAKING
+        ) + _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_LP)], stakingBalance, RewardType.STAKING);
         reserveForLp = _calcPendingReward(recipient, feeState[uint256(FeeType.RESERVE)], lpBalance, RewardType.LP);
         reserveForStaking =
             _calcPendingReward(recipient, feeState[uint256(FeeType.RESERVE)], stakingBalance, RewardType.STAKING);
@@ -135,7 +135,7 @@ library CurveLibrary {
         alpha = _calcParameterAlpha(feeState[uint256(FeeType.RESERVE)]);
         reserveReward = _calcEMA(feeState[uint256(FeeType.RESERVE)], rewardType, alpha);
 
-        // Parameter alpha is same with reserve reward 
+        // Parameter alpha is same with reserve reward
         inverseTokenReward += _calcEMA(feeState[uint256(FeeType.IBC_FROM_LP)], rewardType, alpha);
     }
 

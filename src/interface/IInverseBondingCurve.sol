@@ -15,18 +15,18 @@ interface IInverseBondingCurve {
     /// EVENTS ///
     /**
      * @notice  Emitted when curve is initialized
-     * @dev     Curve is initialized by deployer contract and initial parameter to config the curve and move to proper point to have initial price.
+     * @dev     Curve is initialized by deployer contract and initial parameters
      * @param   from : Which account initialized curve contract
-     * @param   virtualReserve : Initial virtual reserve not backed by any ETH
-     * @param   virtualSupply : Initial virtual supply not assigned to anyone
+     * @param   reserve : Initial reserve
+     * @param   supply : Initial supply credit to fee owner
      * @param   initialPrice : Initial IBC token price
      * @param   parameterUtilization : Parameter reserve utilization: Price * Supply / Reserve
      * @param   parameterInvariant : Parameter invariant which won't change during buy/sell: Reserve/ (Supply ** utilization)
      */
     event CurveInitialized(
         address indexed from,
-        uint256 virtualReserve,
-        uint256 virtualSupply,
+        uint256 reserve,
+        uint256 supply,
         uint256 initialPrice,
         uint256 parameterUtilization,
         uint256 parameterInvariant
@@ -58,7 +58,7 @@ interface IInverseBondingCurve {
      * @param   recipient : The account to receive reserve
      * @param   amountIn : The LP token amount burned
      * @param   reserveAmountOut : Reserve send to recipient
-     * @param   inverseTokenCredit : IBC token credit 
+     * @param   inverseTokenCredit : IBC token credit
      * @param   inverseTokenBurned : IBC token debt which need to burn
      * @param   newParameterUtilization : New parameter reserve utilization after LP removed
      * @param   newParameterInvariant : New parameter invariant after LP removed
@@ -157,11 +157,12 @@ interface IInverseBondingCurve {
 
     /**
      * @notice  Buy IBC token with reserve
-     * @dev
+     * @dev     If exactAmountOut greater than zero, then it will mint exact token to recipient
      * @param   recipient : Account to receive IBC token
+     * @param   exactAmountOut : Exact amount IBC token to mint to user
      * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
      */
-    function buyTokens(address recipient, uint256 maxPriceLimit) external payable;
+    function buyTokens(address recipient, uint256 exactAmountOut, uint256 maxPriceLimit) external payable;
 
     /**
      * @notice  Sell IBC token to get reserve back
@@ -212,14 +213,6 @@ interface IInverseBondingCurve {
      * @return  uint256 : Staking balance
      */
     function stakingBalanceOf(address account) external view returns (uint256);
-
-    // /**
-    //  * @notice  Query price of specific supply
-    //  * @dev
-    //  * @param   supply : Supply amount
-    //  * @return  uint256 : Price at the input supply
-    //  */
-    // function priceOf(uint256 supply) external view returns (uint256);
 
     /**
      * @notice  Get IBC token contract address
@@ -300,6 +293,6 @@ interface IInverseBondingCurve {
         view
         returns (
             uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalReward,
-            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalPendingReward 
+            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalPendingReward
         );
 }

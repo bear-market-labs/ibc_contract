@@ -60,11 +60,11 @@ contract InverseBondingCurveFuzzTest is Test {
         buyReserve = bound(buyReserve, 0.001 ether, 2e8 ether);
         vm.assume(supply < reserve.divDown(price));
 
-        curveContract.initialize(reserve, supply, price, address(tokenContract), otherRecipient);
+        curveContract.initialize{value: reserve}(supply, price, address(tokenContract), otherRecipient);
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e19);
+        curveContract.buyTokens{value: buyReserve}(recipient, 0, 1e19);
     }
 
     function testFuzz(uint256 additionalReserve, uint256 buyReserve) public {
@@ -76,11 +76,11 @@ contract InverseBondingCurveFuzzTest is Test {
         buyReserve = bound(buyReserve, 0.01 ether, 1e4 ether);
         vm.assume(supply < reserve.divDown(price));
 
-        curveContract.initialize(reserve, supply, price, address(tokenContract), otherRecipient);
+        curveContract.initialize{value: reserve}(supply, price, address(tokenContract), otherRecipient);
 
         curveContract.addLiquidity{value: additionalReserve}(recipient, 0);
 
-        curveContract.buyTokens{value: buyReserve}(recipient, 1e20);
+        curveContract.buyTokens{value: buyReserve}(recipient, 0, 1e20);
         tokenContract.approve(address(curveContract), tokenContract.balanceOf(recipient));
         curveContract.removeLiquidity(recipient, 1e19);
 
@@ -91,9 +91,9 @@ contract InverseBondingCurveFuzzTest is Test {
 
         assertEqWithError(param.parameterUtilization, 5e17);
         assertEq(param.lpSupply, 0);
-        assertGt(param.reserve, param.virtualReserve);
-        assertGt(param.supply, param.virtualSupply);
-        assertLt(param.price, 1e19);
+        assertGt(param.reserve, reserve);
+        assertGt(param.supply, supply);
+        assertLt(param.price, price);
 
         curveContract.claimReward(recipient);
 
@@ -105,9 +105,9 @@ contract InverseBondingCurveFuzzTest is Test {
 
         assertEqWithError(param.parameterUtilization, 5e17);
         assertEq(param.lpSupply, 0);
-        assertGt(param.reserve, param.virtualReserve);
-        assertGt(param.supply, param.virtualSupply);
-        assertLt(param.price, 1e19);
+        assertGt(param.reserve, reserve);
+        assertGt(param.supply, supply);
+        assertLt(param.price, price);
     }
 
     // function testSpecific() public {
@@ -161,8 +161,6 @@ contract InverseBondingCurveFuzzTest is Test {
         console2.log(desc);
         console2.log("  reserve:", param.reserve);
         console2.log("  supply:", param.supply);
-        console2.log("  virtualReserve:", param.virtualReserve);
-        console2.log("  virtualSupply:", param.virtualSupply);
         console2.log("  price:", param.price);
         console2.log("  parameterInvariant:", param.parameterInvariant);
         console2.log("  parameterUtilization:", param.parameterUtilization);
