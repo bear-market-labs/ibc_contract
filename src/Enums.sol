@@ -15,6 +15,7 @@ enum ActionType {
 }
 
 enum FeeType {
-    INVERSE_TOKEN,
-    RESERVE
+    IBC_FROM_TRADE,
+    IBC_FROM_LP, // Fee reward from LP removal(only when mint token to LP)
+    RESERVE    
 }

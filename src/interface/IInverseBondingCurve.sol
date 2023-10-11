@@ -291,19 +291,15 @@ interface IInverseBondingCurve {
 
     /**
      * @notice  Query fee state
-     * @dev     Each array contains value for LP/Staker/Protocol
-     * @return  inverseTokenTotalReward : Total IBC token reward
-     * @return  inverseTokenPendingReward : IBC token reward not claimed
-     * @return  reserveTotalReward : Total reserve reward
-     * @return  reservePendingReward : Reserve reward not claimed
+     * @dev     Each array contains value for IBC, IBC from LP removal, Reserve, and each sub array for LP/Staker/Protocol
+     * @return  totalReward : Total IBC token reward
+     * @return  totalPendingReward : IBC token reward not claimed
      */
     function rewardState()
         external
         view
         returns (
-            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenTotalReward,
-            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenPendingReward,
-            uint256[MAX_FEE_STATE_COUNT] memory reserveTotalReward,
-            uint256[MAX_FEE_STATE_COUNT] memory reservePendingReward
+            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalReward,
+            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalPendingReward 
         );
 }

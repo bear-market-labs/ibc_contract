@@ -701,53 +701,59 @@ contract InverseBondingCurveTest is Test {
     function testRewardState() public {
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(recipient, 1e18);
         (
-            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenTotalReward,
-            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenPendingReward,
-            uint256[MAX_FEE_STATE_COUNT] memory reserveTotalReward,
-            uint256[MAX_FEE_STATE_COUNT] memory reservePendingReward
+            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalReward,
+            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalPendingReward  
         ) = curveContract.rewardState();
 
-        assertEq(inverseTokenTotalReward[0], 0);
-        assertEq(inverseTokenTotalReward[1], 0);
-        assertEq(inverseTokenTotalReward[2], 0);
+        assertEq(totalReward[uint256(FeeType.IBC_FROM_TRADE)][0], 0);
+        assertEq(totalReward[uint256(FeeType.IBC_FROM_TRADE)][1], 0);
+        assertEq(totalReward[uint256(FeeType.IBC_FROM_TRADE)][2], 0);
 
-        assertEq(inverseTokenPendingReward[0], 0);
-        assertEq(inverseTokenPendingReward[1], 0);
-        assertEq(inverseTokenPendingReward[2], 0);
+        assertEq(totalReward[uint256(FeeType.IBC_FROM_LP)][0], 0);
+        assertEq(totalReward[uint256(FeeType.IBC_FROM_LP)][1], 0);
+        assertEq(totalReward[uint256(FeeType.IBC_FROM_LP)][2], 0);
+
+        assertEq(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][0], 0);
+        assertEq(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][1], 0);
+        assertEq(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][2], 0);
+
+        assertEq(totalPendingReward[uint256(FeeType.IBC_FROM_LP)][0], 0);
+        assertEq(totalPendingReward[uint256(FeeType.IBC_FROM_LP)][1], 0);
+        assertEq(totalPendingReward[uint256(FeeType.IBC_FROM_LP)][2], 0);
 
         uint256 addLiquidityFee = LIQUIDITY_2ETH_BEFOR_FEE - 2e18;
 
-        assertEq(reserveTotalReward[0], 0);
-        assertEqWithError(reserveTotalReward[1], addLiquidityFee.divDown(3e18));
-        assertEqWithError(reserveTotalReward[2], addLiquidityFee.divDown(3e18).mulDown(2e18));
+        assertEq(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], addLiquidityFee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18).mulDown(2e18));
 
-        assertEq(reservePendingReward[0], 0);
-        assertEqWithError(reservePendingReward[1], addLiquidityFee.divDown(3e18));
-        assertEqWithError(reservePendingReward[2], addLiquidityFee.divDown(3e18).mulDown(2e18));
+        assertEq(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], addLiquidityFee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18).mulDown(2e18));
 
         curveContract.buyTokens{value: 1 ether}(otherRecipient, 1e18);
 
         uint256 tokenOut = tokenContract.balanceOf(otherRecipient);
         uint256 fee = (tokenOut * feePercent) / (1e18 - feePercent);
 
-        (inverseTokenTotalReward, inverseTokenPendingReward, reserveTotalReward, reservePendingReward) =
+        (totalReward, totalPendingReward) =
             curveContract.rewardState();
 
-        assertEqWithError(inverseTokenTotalReward[0], fee.divDown(3e18));
-        assertEqWithError(inverseTokenTotalReward[1], fee.divDown(3e18));
-        assertEqWithError(inverseTokenTotalReward[2], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], fee.divDown(3e18));
 
-        assertEqWithError(inverseTokenPendingReward[0], fee.divDown(3e18));
-        assertEqWithError(inverseTokenPendingReward[1], fee.divDown(3e18));
-        assertEqWithError(inverseTokenPendingReward[2], fee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], fee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], fee.divDown(3e18));
 
-        assertEqWithError(reserveTotalReward[0], 0);
-        assertEqWithError(reserveTotalReward[1], addLiquidityFee.divDown(3e18));
-        assertEqWithError(reserveTotalReward[2], addLiquidityFee.divDown(3e18).mulDown(2e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], addLiquidityFee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18).mulDown(2e18));
 
-        assertEqWithError(reservePendingReward[0], 0);
-        assertEqWithError(reservePendingReward[1], addLiquidityFee.divDown(3e18));
-        assertEqWithError(reservePendingReward[2], addLiquidityFee.divDown(3e18).mulDown(2e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], addLiquidityFee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18).mulDown(2e18));
 
         vm.startPrank(otherRecipient);
         tokenContract.approve(address(curveContract), 1e18);
@@ -756,48 +762,48 @@ contract InverseBondingCurveTest is Test {
 
         curveContract.addLiquidity{value: LIQUIDITY_2ETH_BEFOR_FEE}(otherRecipient, 0);
 
-        (inverseTokenTotalReward, inverseTokenPendingReward, reserveTotalReward, reservePendingReward) =
+       (totalReward, totalPendingReward)  =
             curveContract.rewardState();
 
-        assertEqWithError(inverseTokenTotalReward[0], fee.divDown(3e18));
-        assertEqWithError(inverseTokenTotalReward[1], fee.divDown(3e18));
-        assertEqWithError(inverseTokenTotalReward[2], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], fee.divDown(3e18));
 
-        assertEqWithError(inverseTokenPendingReward[0], fee.divDown(3e18));
-        assertEqWithError(inverseTokenPendingReward[1], fee.divDown(3e18));
-        assertEqWithError(inverseTokenPendingReward[2], fee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], fee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], fee.divDown(3e18));
 
-        assertEqWithError(reserveTotalReward[0], addLiquidityFee.divDown(3e18));
-        assertEqWithError(reserveTotalReward[1], addLiquidityFee.divDown(3e18).mulDown(2e18));
-        assertEqWithError(reserveTotalReward[2], addLiquidityFee.divDown(3e18).mulDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], addLiquidityFee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], addLiquidityFee.divDown(3e18).mulDown(2e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18).mulDown(3e18));
 
-        assertEqWithError(reservePendingReward[0], addLiquidityFee.divDown(3e18));
-        assertEqWithError(reservePendingReward[1], addLiquidityFee.divDown(3e18).mulDown(2e18));
-        assertEqWithError(reservePendingReward[2], addLiquidityFee.divDown(3e18).mulDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], addLiquidityFee.divDown(3e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], addLiquidityFee.divDown(3e18).mulDown(2e18));
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18).mulDown(3e18));
 
         curveContract.claimReward(recipient);
         vm.startPrank(otherRecipient);
         curveContract.claimReward(otherRecipient);
         curveContract.claimProtocolReward();
         vm.stopPrank();
-        (inverseTokenTotalReward, inverseTokenPendingReward, reserveTotalReward, reservePendingReward) =
+        (totalReward, totalPendingReward)  =
             curveContract.rewardState();
 
-        assertEqWithError(inverseTokenTotalReward[0], fee.divDown(3e18));
-        assertEqWithError(inverseTokenTotalReward[1], fee.divDown(3e18));
-        assertEqWithError(inverseTokenTotalReward[2], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], fee.divDown(3e18));
 
-        assertEqWithError(inverseTokenPendingReward[0], 0);
-        assertEqWithError(inverseTokenPendingReward[1], 0);
-        assertEqWithError(inverseTokenPendingReward[2], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], 0);
 
-        assertEqWithError(reserveTotalReward[0], addLiquidityFee.divDown(3e18));
-        assertEqWithError(reserveTotalReward[1], addLiquidityFee.divDown(3e18).mulDown(2e18));
-        assertEqWithError(reserveTotalReward[2], addLiquidityFee.divDown(3e18).mulDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], addLiquidityFee.divDown(3e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], addLiquidityFee.divDown(3e18).mulDown(2e18));
+        assertEqWithError(totalReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18).mulDown(3e18));
 
-        assertEqWithError(reservePendingReward[0], 0);
-        assertEqWithError(reservePendingReward[1], 0);
-        assertEqWithError(reservePendingReward[2], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], 0);
     }
 
     function testBlockRewardEMA() public {

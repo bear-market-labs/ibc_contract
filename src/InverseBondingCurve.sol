@@ -179,7 +179,7 @@ contract InverseBondingCurve is
         if (recipient == address(0)) revert EmptyAddress();
         if (_currentPrice() < minPriceLimit) revert PriceOutOfLimit(_currentPrice(), minPriceLimit);
 
-        uint256 fee = _calcAndUpdateFee(msg.value, ActionType.ADD_LIQUIDITY);
+        uint256 fee = _calcAndUpdateFee(msg.value, ActionType.ADD_LIQUIDITY, _feeStates[uint256(FeeType.RESERVE)]);
         uint256 reserveAdded = msg.value - fee;
         (uint256 mintToken, uint256 inverseTokenCredit) = _calcLpAddition(reserveAdded);
 
@@ -209,7 +209,7 @@ contract InverseBondingCurve is
 
         (uint256 reserveRemoved, uint256 inverseTokenBurned) = _calcLpRemoval(burnTokenAmount);
         uint256 newSupply = _virtualInverseTokenTotalSupply() - inverseTokenBurned;
-        uint256 fee = _calcAndUpdateFee(reserveRemoved, ActionType.REMOVE_LIQUIDITY);
+        uint256 fee = _calcAndUpdateFee(reserveRemoved, ActionType.REMOVE_LIQUIDITY, _feeStates[uint256(FeeType.RESERVE)]);
         uint256 reserveToUser = reserveRemoved - fee;
 
         _updateLpReward(msg.sender);
@@ -230,7 +230,10 @@ contract InverseBondingCurve is
         );
 
         if (inverseTokenCredit > inverseTokenBurned) {
-            _inverseToken.mint(recipient, inverseTokenCredit - inverseTokenBurned);
+            uint256 tokenMint = inverseTokenCredit - inverseTokenBurned;
+            fee = _calcAndUpdateFee(tokenMint, ActionType.REMOVE_LIQUIDITY, _feeStates[uint256(FeeType.IBC_FROM_LP)]);
+            _inverseToken.mint(recipient, tokenMint - fee);
+            _inverseToken.mint(address(this), fee);
         } else if (inverseTokenCredit < inverseTokenBurned) {
             _inverseToken.burnFrom(msg.sender, inverseTokenBurned - inverseTokenCredit);
         }
@@ -250,7 +253,7 @@ contract InverseBondingCurve is
         if (msg.value < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(msg.value);
 
         uint256 newToken = _calcMintToken(msg.value);
-        uint256 fee = _calcAndUpdateFee(newToken, ActionType.BUY_TOKEN);
+        uint256 fee = _calcAndUpdateFee(newToken, ActionType.BUY_TOKEN, _feeStates[uint256(FeeType.IBC_FROM_TRADE)]);
         uint256 mintToken = newToken - fee;
         _increaseReserve(msg.value);
 
@@ -278,7 +281,7 @@ contract InverseBondingCurve is
         if (amount < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(amount);
         if (recipient == address(0)) revert EmptyAddress();
 
-        uint256 fee = _calcAndUpdateFee(amount, ActionType.SELL_TOKEN);
+        uint256 fee = _calcAndUpdateFee(amount, ActionType.SELL_TOKEN, _feeStates[uint256(FeeType.IBC_FROM_TRADE)]);
         uint256 burnToken = amount - fee;
 
         uint256 returnLiquidity = _calcBurnToken(burnToken);
@@ -344,13 +347,13 @@ contract InverseBondingCurve is
         _updateLpReward(msg.sender);
         _updateStakingReward(msg.sender);
 
-        uint256 inverseTokenReward = _claimReward(_feeStates[uint256(FeeType.INVERSE_TOKEN)]);
+        uint256 inverseTokenReward = _claimReward(_feeStates[uint256(FeeType.IBC_FROM_TRADE)]) + _claimReward(_feeStates[uint256(FeeType.IBC_FROM_LP)]);
         uint256 reserveReward = _claimReward(_feeStates[uint256(FeeType.RESERVE)]);
 
         if (inverseTokenReward > 0) {
             // uint256 maxReward = _inverseToken.balanceOf(address(this)).sub(
-            //     _feeStates[uint256(FeeType.INVERSE_TOKEN)].totalPendingReward[uint256(RewardType.PROTOCOL)].add(
-            //         _feeStates[uint256(FeeType.INVERSE_TOKEN)].feeForFirstStaker
+            //     _feeStates[uint256(FeeType.IBC_FROM_TRADE)].totalPendingReward[uint256(RewardType.PROTOCOL)].add(
+            //         _feeStates[uint256(FeeType.IBC_FROM_TRADE)].feeForFirstStaker
             //     )
             // );
             // if (inverseTokenReward > maxReward) {
@@ -382,10 +385,12 @@ contract InverseBondingCurve is
         if (msg.sender != _protocolFeeOwner) revert Unauthorized();
 
         uint256 inverseTokenReward =
-            _feeStates[uint256(FeeType.INVERSE_TOKEN)].totalPendingReward[uint256(RewardType.PROTOCOL)];
+            _feeStates[uint256(FeeType.IBC_FROM_TRADE)].totalPendingReward[uint256(RewardType.PROTOCOL)] +
+            _feeStates[uint256(FeeType.IBC_FROM_LP)].totalPendingReward[uint256(RewardType.PROTOCOL)];
         uint256 reserveReward = _feeStates[uint256(FeeType.RESERVE)].totalPendingReward[uint256(RewardType.PROTOCOL)];
 
-        _feeStates[uint256(FeeType.INVERSE_TOKEN)].totalPendingReward[uint256(RewardType.PROTOCOL)] = 0;
+        _feeStates[uint256(FeeType.IBC_FROM_TRADE)].totalPendingReward[uint256(RewardType.PROTOCOL)] = 0;
+        _feeStates[uint256(FeeType.IBC_FROM_LP)].totalPendingReward[uint256(RewardType.PROTOCOL)] = 0;
         _feeStates[uint256(FeeType.RESERVE)].totalPendingReward[uint256(RewardType.PROTOCOL)] = 0;
 
         if (inverseTokenReward > 0) {
@@ -518,7 +523,8 @@ contract InverseBondingCurve is
      * @dev
      */
     function rewardOfProtocol() external view returns (uint256 inverseTokenReward, uint256 reserveReward) {
-        inverseTokenReward = _feeStates[uint256(FeeType.INVERSE_TOKEN)].totalPendingReward[uint256(RewardType.PROTOCOL)];
+        inverseTokenReward = _feeStates[uint256(FeeType.IBC_FROM_TRADE)].totalPendingReward[uint256(RewardType.PROTOCOL)] + 
+            _feeStates[uint256(FeeType.IBC_FROM_LP)].totalPendingReward[uint256(RewardType.PROTOCOL)];
         reserveReward = _feeStates[uint256(FeeType.RESERVE)].totalPendingReward[uint256(RewardType.PROTOCOL)];
     }
 
@@ -540,27 +546,31 @@ contract InverseBondingCurve is
     /**
      * @notice  Query fee state
      * @dev     Each array contains value for LP/Staker/Protocol
-     * @return  inverseTokenTotalReward : Total IBC token reward
-     * @return  inverseTokenPendingReward : IBC token reward not claimed
-     * @return  reserveTotalReward : Total reserve reward
-     * @return  reservePendingReward : Reserve reward not claimed
+     * @return  totalReward : Total IBC token reward
+     * @return  totalPendingReward : IBC token reward not claimed
      */
     function rewardState()
         external
         view
         returns (
-            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenTotalReward,
-            uint256[MAX_FEE_STATE_COUNT] memory inverseTokenPendingReward,
-            uint256[MAX_FEE_STATE_COUNT] memory reserveTotalReward,
-            uint256[MAX_FEE_STATE_COUNT] memory reservePendingReward
+            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalReward,
+            uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalPendingReward     
+            // uint256[MAX_FEE_STATE_COUNT] memory inverseTokenTotalReward,
+            // uint256[MAX_FEE_STATE_COUNT] memory inverseTokenPendingReward,
+            // uint256[MAX_FEE_STATE_COUNT] memory reserveTotalReward,
+            // uint256[MAX_FEE_STATE_COUNT] memory reservePendingReward
         )
     {
-        return (
-            _feeStates[uint256(FeeType.INVERSE_TOKEN)].totalReward,
-            _feeStates[uint256(FeeType.INVERSE_TOKEN)].totalPendingReward,
-            _feeStates[uint256(FeeType.RESERVE)].totalReward,
+        totalReward = [
+            _feeStates[uint256(FeeType.IBC_FROM_TRADE)].totalReward,
+            _feeStates[uint256(FeeType.IBC_FROM_LP)].totalReward,
+            _feeStates[uint256(FeeType.RESERVE)].totalReward
+        ];
+        totalPendingReward = [
+            _feeStates[uint256(FeeType.IBC_FROM_TRADE)].totalPendingReward,
+            _feeStates[uint256(FeeType.IBC_FROM_LP)].totalPendingReward,
             _feeStates[uint256(FeeType.RESERVE)].totalPendingReward
-        );
+        ];
     }
 
     /**
@@ -739,36 +749,36 @@ contract InverseBondingCurve is
      * @param   action : Buy/Sell/Add liquidity/Remove liquidity
      * @return  totalFee : Total fee for LP+Staker+Protocol
      */
-    function _calcAndUpdateFee(uint256 amount, ActionType action) private returns (uint256 totalFee) {
+    function _calcAndUpdateFee(uint256 amount, ActionType action, FeeState storage feeState) private returns (uint256 totalFee) {
         uint256 lpFee = amount.mulDown(_lpFeePercent[uint256(action)]);
         uint256 stakingFee = amount.mulDown(_stakingFeePercent[uint256(action)]);
         uint256 protocolFee = amount.mulDown(_protocolFeePercent[uint256(action)]);
 
-        FeeState storage state = (action == ActionType.BUY_TOKEN || action == ActionType.SELL_TOKEN)
-            ? _feeStates[uint256(FeeType.INVERSE_TOKEN)]
-            : _feeStates[uint256(FeeType.RESERVE)];
+        // FeeState storage state = (action == ActionType.BUY_TOKEN || action == ActionType.SELL_TOKEN)
+        //     ? _feeStates[uint256(FeeType.IBC_FROM_TRADE)]
+        //     : _feeStates[uint256(FeeType.RESERVE)];
 
-        CurveLibrary.updateRewardEMA(state);
+        CurveLibrary.updateRewardEMA(feeState);
 
         if (_lpTotalSupply() > 0) {
-            state.globalFeeIndexes[uint256(RewardType.LP)] += lpFee.divDown(_lpTotalSupply());
-            state.totalReward[uint256(RewardType.LP)] += lpFee;
-            state.totalPendingReward[uint256(RewardType.LP)] += lpFee;
+            feeState.globalFeeIndexes[uint256(RewardType.LP)] += lpFee.divDown(_lpTotalSupply());
+            feeState.totalReward[uint256(RewardType.LP)] += lpFee;
+            feeState.totalPendingReward[uint256(RewardType.LP)] += lpFee;
         } else {
-            state.totalReward[uint256(RewardType.PROTOCOL)] += lpFee;
-            state.totalPendingReward[uint256(RewardType.PROTOCOL)] += lpFee;
+            feeState.totalReward[uint256(RewardType.PROTOCOL)] += lpFee;
+            feeState.totalPendingReward[uint256(RewardType.PROTOCOL)] += lpFee;
         }
 
         if (_totalStaked > 0) {
-            state.globalFeeIndexes[uint256(RewardType.STAKING)] += stakingFee.divDown(_totalStaked);
+            feeState.globalFeeIndexes[uint256(RewardType.STAKING)] += stakingFee.divDown(_totalStaked);
         } else {
-            state.feeForFirstStaker = stakingFee;
+            feeState.feeForFirstStaker = stakingFee;
         }
-        state.totalReward[uint256(RewardType.STAKING)] += stakingFee;
-        state.totalPendingReward[uint256(RewardType.STAKING)] += stakingFee;
+        feeState.totalReward[uint256(RewardType.STAKING)] += stakingFee;
+        feeState.totalPendingReward[uint256(RewardType.STAKING)] += stakingFee;
 
-        state.totalPendingReward[uint256(RewardType.PROTOCOL)] += protocolFee;
-        state.totalReward[uint256(RewardType.PROTOCOL)] += protocolFee;
+        feeState.totalPendingReward[uint256(RewardType.PROTOCOL)] += protocolFee;
+        feeState.totalReward[uint256(RewardType.PROTOCOL)] += protocolFee;
 
         return lpFee + stakingFee + protocolFee;
     }
@@ -779,9 +789,10 @@ contract InverseBondingCurve is
      */
     function _rewardFirstStaker() private {
         if (_totalStaked == 0) {
-            _rewardFirstStaker(FeeType.INVERSE_TOKEN);
+            _rewardFirstStaker(FeeType.IBC_FROM_TRADE);
+            _rewardFirstStaker(FeeType.IBC_FROM_LP);
             _rewardFirstStaker(FeeType.RESERVE);
-            // FeeState storage state = _feeStates[uint256(FeeType.INVERSE_TOKEN)];
+            // FeeState storage state = _feeStates[uint256(FeeType.IBC_FROM_TRADE)];
             // if (state.feeForFirstStaker > 0) {
             //     state.pendingRewards[uint256(RewardType.STAKING)][msg.sender] = state.feeForFirstStaker;
             //     state.feeForFirstStaker = 0;
