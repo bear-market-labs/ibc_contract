@@ -218,13 +218,13 @@ contract InverseBondingCurve is
         _decreaseReserve(reserveRemoved);
         _updateInvariant(newSupply);
 
-        int256 inverseTokenAmountOut = int256(inverseTokenCredit) - int256(inverseTokenBurned);
         emit LiquidityRemoved(
             msg.sender,
             recipient,
             burnTokenAmount,
             reserveToUser,
-            inverseTokenAmountOut,
+            inverseTokenCredit,
+            inverseTokenBurned,
             _parameterUtilization,
             _parameterInvariant
         );
