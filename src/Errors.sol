@@ -13,3 +13,6 @@ error FailToSend(address recipient);
 error InvalidInput();
 error Unauthorized();
 error InvariantChanged(uint256 invariant, uint256 newInvariant);
+error UtilizationChanged(uint256 utilization, uint256 newUtilization);
+error LpAlreadyExist();
+error LpNotExist();

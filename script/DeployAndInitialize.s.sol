@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import "../src/InverseBondingCurve.sol";
 import "../src/InverseBondingCurveProxy.sol";
 import "../src/InverseBondingCurveToken.sol";
-import "../src/Deployer.sol";
+import "../src/deploy/Deployer.sol";
 import "forge-std/console2.sol";
 
 contract DeployScript is Script {
@@ -18,11 +18,11 @@ contract DeployScript is Script {
         vm.startBroadcast(privateKey);
         address feeOwner = vm.addr(privateKey);
 
-        uint256 virtualReserve = 2e18;
-        uint256 supply = 1e18;
-        uint256 price = 1e18;
+        uint256 virtualReserve = 2e22;
+        uint256 supply = 1e21;
+        uint256 price = 1e19;
 
-        Deployer deployer = Deployer(vm.parseAddress("0x716473fb4e7cd49c7d1ec7ec6d7490a03d9da332"));
+        Deployer deployer = Deployer(vm.parseAddress("0x82bd83ec6d4bcc8eab6f6cf7565efe1e41d92ce5"));
 
         deployer.deploy(
             type(InverseBondingCurve).creationCode,

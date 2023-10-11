@@ -5,29 +5,243 @@ import "../CurveParameter.sol";
 import "../Enums.sol";
 import "../Constants.sol";
 
+/**
+ * @title   : Inverse bonding curve contract interface
+ * @dev
+ * @notice
+ */
+
 interface IInverseBondingCurve {
+    /// EVENTS ///
+    /**
+     * @notice  Emitted when curve is initialized
+     * @dev     Curve is initialized by deployer contract and initial parameter to config the curve and move to proper point to have initial price.
+     * @param   from : Which account initialized curve contract
+     * @param   virtualReserve : Initial virtual reserve not backed by any ETH
+     * @param   virtualSupply : Initial virtual supply not assigned to anyone
+     * @param   initialPrice : Initial IBC token price
+     * @param   parameterUtilization : Parameter reserve utilization: Price * Supply / Reserve
+     * @param   parameterInvariant : Parameter invariant which won't change during buy/sell: Reserve/ (Supply ** utilization)
+     */
+    event CurveInitialized(
+        address indexed from,
+        uint256 virtualReserve,
+        uint256 virtualSupply,
+        uint256 initialPrice,
+        uint256 parameterUtilization,
+        uint256 parameterInvariant
+    );
+
+    /**
+     * @notice  Emitted when new LP position added
+     * @dev     Virtual credited IBC token is assigned to LP
+     * @param   from : Account to create LP position
+     * @param   recipient : Account to receive LP position and LP reward
+     * @param   amountIn : Reserve amount
+     * @param   amountOut : LP token amount
+     * @param   newParameterUtilization : New parameter reserve utilization after LP added
+     * @param   newParameterInvariant : New parameter invariant after LP added
+     */
+    event LiquidityAdded(
+        address indexed from,
+        address indexed recipient,
+        uint256 amountIn,
+        uint256 amountOut,
+        uint256 newParameterUtilization,
+        uint256 newParameterInvariant
+    );
+
+    /**
+     * @notice  Emitted when LP position removed
+     * @dev     Mint IBC to LP if inverseTokenCredit > inverseTokenBurned, otherwise burn IBC from LP
+     * @param   from : The account to burn LP
+     * @param   recipient : The account to receive reserve
+     * @param   amountIn : The LP token amount burned
+     * @param   reserveAmountOut : Reserve send to recipient
+     * @param   inverseTokenCredit : IBC token credit 
+     * @param   inverseTokenBurned : IBC token debt which need to burn
+     * @param   newParameterUtilization : New parameter reserve utilization after LP removed
+     * @param   newParameterInvariant : New parameter invariant after LP removed
+     */
+    event LiquidityRemoved(
+        address indexed from,
+        address indexed recipient,
+        uint256 amountIn,
+        uint256 reserveAmountOut,
+        uint256 inverseTokenCredit,
+        uint256 inverseTokenBurned,
+        uint256 newParameterUtilization,
+        uint256 newParameterInvariant
+    );
+
+    /**
+     * @notice  Emitted when token staked
+     * @dev
+     * @param   from : Staked from account
+     * @param   amount : Staked token amount
+     */
+    event TokenStaked(address indexed from, uint256 amount);
+
+    /**
+     * @notice  Emitted when token unstaked
+     * @dev
+     * @param   from : Unstaked from account
+     * @param   amount : Unstaked token amount
+     */
+    event TokenUnstaked(address indexed from, uint256 amount);
+
+    /**
+     * @notice  Emitted when token bought by user
+     * @dev
+     * @param   from : Buy from account
+     * @param   recipient : Account to receive IBC token
+     * @param   amountIn : Reserve amount provided
+     * @param   amountOut : IBC token bought
+     */
+    event TokenBought(address indexed from, address indexed recipient, uint256 amountIn, uint256 amountOut);
+
+    /**
+     * @notice  Emitted when token sold by user
+     * @dev
+     * @param   from : Sell from account
+     * @param   recipient : Account to receive reserve
+     * @param   amountIn : IBC amount provided
+     * @param   amountOut : Reserve amount received
+     */
+    event TokenSold(address indexed from, address indexed recipient, uint256 amountIn, uint256 amountOut);
+
+    /**
+     * @notice  Emitted when reward claimed
+     * @dev
+     * @param   from : Claim from account
+     * @param   recipient : Account to recieve reward
+     * @param   inverseTokenAmount : IBC token amount of reward
+     * @param   reserveAmount : Reserve amount of reward
+     */
+    event RewardClaimed(
+        address indexed from, address indexed recipient, uint256 inverseTokenAmount, uint256 reserveAmount
+    );
+
+    /**
+     * @notice  Emmitted when fee configuration changed
+     * @dev
+     * @param   actionType : The action type of the changed fee configuration. (Buy/Sell/Add liquidity/Remove liquidity)
+     * @param   lpFee : Fee reward percent for LP
+     * @param   stakingFee : Fee reward percent for Staker
+     * @param   protocolFee : Fee reward percent for Protocol
+     */
+    event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
+
+    /**
+     * @notice  Emitted when protocol fee owner changed
+     * @dev
+     * @param   feeOwner : New fee owner of protocol fee
+     */
+    event FeeOwnerChanged(address feeOwner);
+
+    /**
+     * @notice  Add reserve liquidity to inverse bonding curve
+     * @dev     LP will get virtual LP token(non-transferable), and one account can only hold one LP position(Need to close and reopen if user want to change)
+     * @param   recipient : Account to receive LP token
+     * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
+     */
     function addLiquidity(address recipient, uint256 minPriceLimit) external payable;
 
-    function removeLiquidity(address recipient, uint256 amount, uint256 maxPriceLimit) external;
+    /**
+     * @notice  Remove reserve liquidity from inverse bonding curve
+     * @dev     IBC token may needed to burn LP
+     * @param   recipient : Account to receive reserve
+     * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
+     */
+    function removeLiquidity(address recipient, uint256 maxPriceLimit) external;
 
-    function buyTokens(address recipient, uint256 maxPriceLimit, uint256 maxReserveLimit) external payable;
+    /**
+     * @notice  Buy IBC token with reserve
+     * @dev
+     * @param   recipient : Account to receive IBC token
+     * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
+     */
+    function buyTokens(address recipient, uint256 maxPriceLimit) external payable;
 
-    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit, uint256 minReserveLimit) external;
+    /**
+     * @notice  Sell IBC token to get reserve back
+     * @dev
+     * @param   recipient : Account to receive reserve
+     * @param   amount : IBC token amount to sell
+     * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
+     */
+    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external;
 
+    /**
+     * @notice  Stake IBC token to get fee reward
+     * @dev
+     * @param   amount : Token amount to stake
+     */
     function stake(uint256 amount) external;
 
+    /**
+     * @notice  Unstake staked IBC token
+     * @dev
+     * @param   amount : Token amount to unstake
+     */
     function unstake(uint256 amount) external;
 
+    /**
+     * @notice  Claim fee reward
+     * @dev
+     * @param   recipient : Account to receive fee reward
+     */
     function claimReward(address recipient) external;
 
-    function stakingBalanceOf(address holder) external view returns (uint256);
+    /**
+     * @notice  Query LP position
+     * @dev
+     * @param   account : Account to query position
+     * @return  lpTokenAmount : LP virtual token amount
+     * @return  inverseTokenCredit : IBC token credited(Virtual, not able to sell/stake/transfer)
+     */
+    function liquidityPositionOf(address account)
+        external
+        view
+        returns (uint256 lpTokenAmount, uint256 inverseTokenCredit);
 
-    function priceOf(uint256 supply) external view returns (uint256);
+    /**
+     * @notice  Query staking balance
+     * @dev
+     * @param   account : Account address to query
+     * @return  uint256 : Staking balance
+     */
+    function stakingBalanceOf(address account) external view returns (uint256);
 
+    // /**
+    //  * @notice  Query price of specific supply
+    //  * @dev
+    //  * @param   supply : Supply amount
+    //  * @return  uint256 : Price at the input supply
+    //  */
+    // function priceOf(uint256 supply) external view returns (uint256);
+
+    /**
+     * @notice  Get IBC token contract address
+     * @dev
+     * @return  address : IBC token contract address
+     */
     function inverseTokenAddress() external view returns (address);
 
+    /**
+     * @notice  Query current inverse bonding curve parameter
+     * @dev
+     * @return  parameters : See CurveParameter for detail
+     */
     function curveParameters() external view returns (CurveParameter memory parameters);
 
+    /**
+     * @notice  Query fee configuration
+     * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
+     * @return  lpFee : The percent of fee reward to LP
+     * @return  stakingFee : The percent of fee reward to staker
+     * @return  protocolFee : The percent of fee reward to protocol
+     */
     function feeConfig()
         external
         view
@@ -37,6 +251,15 @@ interface IInverseBondingCurve {
             uint256[MAX_ACTION_COUNT] memory protocolFee
         );
 
+    /**
+     * @notice  Query reward of account
+     * @dev
+     * @param   recipient : Account to query
+     * @return  inverseTokenForLp : IBC token reward for account as LP
+     * @return  inverseTokenForStaking : IBC token reward for account as Staker
+     * @return  reserveForLp : Reserve reward for account as LP
+     * @return  reserveForStaking : Reserve reward for account as Staker
+     */
     function rewardOf(address recipient)
         external
         view
@@ -46,13 +269,34 @@ interface IInverseBondingCurve {
             uint256 reserveForLp,
             uint256 reserveForStaking
         );
+
+    /**
+     * @notice  Query total staked IBC token amount
+     * @dev
+     * @return  uint256 : Total staked amount
+     */
     function totalStaked() external view returns (uint256);
 
+    /**
+     * @notice  Query EMA(exponential moving average) reward per block
+     * @dev
+     * @param   rewardType : Reward type: LP or staking
+     * @return  inverseTokenReward : EMA IBC token reward per block
+     * @return  reserveReward : EMA reserve reward per block
+     */
     function blockRewardEMA(RewardType rewardType)
         external
         view
         returns (uint256 inverseTokenReward, uint256 reserveReward);
 
+    /**
+     * @notice  Query fee state
+     * @dev     Each array contains value for LP/Staker/Protocol
+     * @return  inverseTokenTotalReward : Total IBC token reward
+     * @return  inverseTokenPendingReward : IBC token reward not claimed
+     * @return  reserveTotalReward : Total reserve reward
+     * @return  reservePendingReward : Reserve reward not claimed
+     */
     function rewardState()
         external
         view
