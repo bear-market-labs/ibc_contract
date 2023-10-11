@@ -53,12 +53,13 @@ interface IInverseBondingCurve {
 
     /**
      * @notice  Emitted when LP position removed
-     * @dev
+     * @dev     Mint IBC to LP if inverseTokenCredit > inverseTokenBurned, otherwise burn IBC from LP
      * @param   from : The account to burn LP
      * @param   recipient : The account to receive reserve
      * @param   amountIn : The LP token amount burned
      * @param   reserveAmountOut : Reserve send to recipient
-     * @param   inverseTokenAmountOut : IBC token send to recipient, if negtive means IBC token amount burn from LP to burn LP
+     * @param   inverseTokenCredit : IBC token credit 
+     * @param   inverseTokenBurned : IBC token debt which need to burn
      * @param   newParameterUtilization : New parameter reserve utilization after LP removed
      * @param   newParameterInvariant : New parameter invariant after LP removed
      */
@@ -67,7 +68,8 @@ interface IInverseBondingCurve {
         address indexed recipient,
         uint256 amountIn,
         uint256 reserveAmountOut,
-        int256 inverseTokenAmountOut,
+        uint256 inverseTokenCredit,
+        uint256 inverseTokenBurned,
         uint256 newParameterUtilization,
         uint256 newParameterInvariant
     );
