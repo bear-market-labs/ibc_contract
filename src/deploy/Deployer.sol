@@ -4,7 +4,6 @@ pragma solidity ^0.8.18;
 import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/utils/Create2.sol";
 
-
 contract Deployer is Ownable {
     event Deployed(address cruveContract, address tokenContract, address proxyContract);
 

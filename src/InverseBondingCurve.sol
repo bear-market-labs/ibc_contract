@@ -34,7 +34,6 @@ contract InverseBondingCurve is
 {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
-    /// ERRORS ///
 
     /// STATE VARIABLES ///
     address private _protocolFeeOwner;
@@ -198,16 +197,15 @@ contract InverseBondingCurve is
         if (recipient == address(0)) revert EmptyAddress();
         if (_currentPrice() > maxPriceLimit) revert PriceOutOfLimit(_currentPrice(), maxPriceLimit);
 
+        _updateLpReward(msg.sender);
         uint256 inverseTokenCredit = _lpPositions[msg.sender].inverseTokenCredit;
-
         (uint256 reserveRemoved, uint256 inverseTokenBurned) = _calcLpRemoval(burnTokenAmount);
         uint256 newSupply = _virtualInverseTokenTotalSupply() - inverseTokenBurned;
+        // Remove LP position(LP token and IBC credit) after caclulation
+        _removeLpPosition();
         uint256 fee =
             _calcAndUpdateFee(reserveRemoved, false, ActionType.REMOVE_LIQUIDITY, _feeStates[uint256(FeeType.RESERVE)]);
         uint256 reserveToUser = reserveRemoved - fee;
-
-        _updateLpReward(msg.sender);
-        _removeLpPosition();
 
         _decreaseReserve(reserveRemoved);
         _updateInvariant(newSupply);
@@ -237,35 +235,7 @@ contract InverseBondingCurve is
         _checkUtilizationNotChanged();
         _transferReserve(recipient, reserveToUser);
     }
-
-    // /**
-    //  * @notice  Buy IBC token with reserve
-    //  * @dev
-    //  * @param   recipient : Account to receive IBC token
-    //  * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
-    //  */
-    // function buyTokens(address recipient, uint256 maxPriceLimit) external payable whenNotPaused {
-    //     if (recipient == address(0)) revert EmptyAddress();
-    //     if (msg.value < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(msg.value);
-
-    //     uint256 newToken = _calcMintToken(msg.value);
-    //     uint256 fee =
-    //         _calcAndUpdateFee(newToken, false, ActionType.BUY_TOKEN, _feeStates[uint256(FeeType.IBC_FROM_TRADE)]);
-    //     uint256 mintToken = newToken - fee;
-    //     _increaseReserve(msg.value);
-
-    //     if (msg.value.divDown(mintToken) > maxPriceLimit) {
-    //         revert PriceOutOfLimit(msg.value.divDown(mintToken), maxPriceLimit);
-    //     }
-
-    //     _checkInvariantNotChanged(_virtualInverseTokenTotalSupply() + newToken);
-
-    //     _inverseToken.mint(recipient, mintToken);
-    //     _inverseToken.mint(address(this), fee);
-
-    //     emit TokenBought(msg.sender, recipient, msg.value, mintToken);
-    // }
-
+    
     /**
      * @notice  Buy IBC token with reserve
      * @dev     If exactAmountOut greater than zero, then it will mint exact token to recipient
@@ -355,7 +325,7 @@ contract InverseBondingCurve is
         _totalStaked += amount;
 
         emit TokenStaked(msg.sender, amount);
-        IERC20(_inverseToken).safeTransferFrom(msg.sender, address(this), amount);        
+        IERC20(_inverseToken).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
@@ -372,7 +342,7 @@ contract InverseBondingCurve is
         _totalStaked -= amount;
 
         emit TokenUnstaked(msg.sender, amount);
-        IERC20(_inverseToken).safeTransfer(msg.sender, amount);        
+        IERC20(_inverseToken).safeTransfer(msg.sender, amount);
     }
 
     /**
@@ -394,7 +364,7 @@ contract InverseBondingCurve is
 
         if (inverseTokenReward > 0) {
             IERC20(_inverseToken).safeTransfer(recipient, inverseTokenReward);
-        }       
+        }
 
         _transferReserve(recipient, reserveReward);
     }
@@ -438,18 +408,6 @@ contract InverseBondingCurve is
     {
         return (_lpPositions[account].lpTokenAmount, _lpPositions[account].inverseTokenCredit);
     }
-
-    /**
-     * @notice  Query price of specific supply
-     * @dev
-     * @param   supply : Supply amount
-     * @return  uint256 : Price at the input supply
-     */
-    // function priceOf(uint256 supply) public view returns (uint256) {
-    //     return _parameterInvariant.mulDown(_parameterUtilization).divDown(
-    //         supply.powDown(ONE_UINT.sub(_parameterUtilization))
-    //     );
-    // }
 
     /**
      * @notice  Get IBC token contract address
@@ -822,10 +780,10 @@ contract InverseBondingCurve is
     /**
      * @notice  Calculate token need to mint, fee based on input reserve
      * @dev     
-     * @return  totalMint : Total token need to mint 
-     * @return  tokenToUser : Token amount mint to user 
+     * @return  totalMint : Total token need to mint
+     * @return  tokenToUser : Token amount mint to user
      * @return  fee : Total fee
-     * @return  reserve : Reserve needed
+     * @return  reserve : Reserve needed  
      */
     function _calcExacAmountIn()
         private

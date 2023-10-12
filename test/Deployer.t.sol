@@ -55,7 +55,5 @@ contract DeployerTest is Test {
         require(param.supply == supply, "Supply Parameter incorrect");
         require(tokenContract.totalSupply() == 0, "Inital IBC token supply incorrect");
         require(param.price == price, "Initial Price incorrect");
-
-        
     }
 }
