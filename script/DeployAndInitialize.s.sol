@@ -18,17 +18,16 @@ contract DeployScript is Script {
         vm.startBroadcast(privateKey);
         address feeOwner = vm.addr(privateKey);
 
-        uint256 virtualReserve = 2e22;
-        uint256 supply = 1e21;
-        uint256 price = 1e19;
+        uint256 reserve = 2e18;
+        uint256 supply = 1e18;
+        uint256 price = 1e18;
 
         Deployer deployer = Deployer(vm.parseAddress("0x82bd83ec6d4bcc8eab6f6cf7565efe1e41d92ce5"));
 
-        deployer.deploy(
+        deployer.deploy{value: reserve}(
             type(InverseBondingCurve).creationCode,
             type(InverseBondingCurveToken).creationCode,
             type(InverseBondingCurveProxy).creationCode,
-            virtualReserve,
             supply,
             price,
             feeOwner

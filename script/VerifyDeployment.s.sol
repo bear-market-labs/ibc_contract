@@ -18,9 +18,9 @@ contract VerifyDeployment is Script {
         vm.startBroadcast(privateKey);
         // address feeOwner = vm.addr(privateKey);
 
-        uint256 virtualReserve = 2e22;
-        uint256 supply = 1e21;
-        uint256 price = 1e19;
+        uint256 reserve = 2e18;
+        uint256 supply = 1e18;
+        uint256 price = 1e18;
 
         Deployer deployer = Deployer(vm.parseAddress("0x82bd83ec6d4bcc8eab6f6cf7565efe1e41d92ce5"));
 
@@ -39,8 +39,9 @@ contract VerifyDeployment is Script {
         require(tokenContract.owner() == proxyContractAddress, "Token contract owner incorrect");
         require(curveContract.getImplementation() == curveContractAddress, "Curve implementation incorrect");
 
-        require(param.virtualReserve == virtualReserve, "Reserve Parameter incorrect");
-        require(param.virtualSupply == supply, "Supply Parameter incorrect");
+        require(param.reserve == reserve, "Reserve Parameter incorrect");
+        require(param.supply == supply, "Supply Parameter incorrect");
+        require(tokenContract.totalSupply() == 0, "Inital IBC token supply incorrect");
         require(param.price == price, "Initial Price incorrect");
 
         vm.stopBroadcast();
