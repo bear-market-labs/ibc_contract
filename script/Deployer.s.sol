@@ -8,32 +8,32 @@ import "../src/InverseBondingCurveToken.sol";
 import "../src/deploy/Deployer.sol";
 import "forge-std/console2.sol";
 
-contract DeployerScript is Script {
-    function setUp() public {}
+// contract DeployerScript is Script {
+//     function setUp() public {}
 
-    function run() public {
-        // Put secret in .secret file under contracts folder
-        string memory seedPhrase = vm.readFile(".secret");
-        uint256 privateKey = vm.deriveKey(seedPhrase, 0);
-        vm.startBroadcast(privateKey);
-        // address feeOwner = vm.addr(privateKey);
+//     function run() public {
+//         // Put secret in .secret file under contracts folder
+//         string memory seedPhrase = vm.readFile(".secret");
+//         uint256 privateKey = vm.deriveKey(seedPhrase, 0);
+//         vm.startBroadcast(privateKey);
+//         // address feeOwner = vm.addr(privateKey);
 
-        // uint256 virtualReserve = 2e22;
-        // uint256 supply = 1e21;
-        // uint256 price = 1e19;
+//         // uint256 virtualReserve = 2e22;
+//         // uint256 supply = 1e21;
+//         // uint256 price = 1e19;
 
-        Deployer deployer = new Deployer();
+//         Deployer deployer = new Deployer();
 
-        // deployer.deploy(
-        //     type(InverseBondingCurve).creationCode,
-        //     type(InverseBondingCurveToken).creationCode,
-        //     type(InverseBondingCurveProxy).creationCode,
-        //     virtualReserve,
-        //     supply,
-        //     price,
-        //     feeOwner
-        // );
+//         // deployer.deploy(
+//         //     type(InverseBondingCurve).creationCode,
+//         //     type(InverseBondingCurveToken).creationCode,
+//         //     type(InverseBondingCurveProxy).creationCode,
+//         //     virtualReserve,
+//         //     supply,
+//         //     price,
+//         //     feeOwner
+//         // );
 
-        vm.stopBroadcast();
-    }
-}
+//         vm.stopBroadcast();
+//     }
+// }

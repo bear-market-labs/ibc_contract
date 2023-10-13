@@ -145,7 +145,7 @@ interface IInverseBondingCurve {
      * @param   recipient : Account to receive LP token
      * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
      */
-    function addLiquidity(address recipient, uint256 minPriceLimit) external payable;
+    function addLiquidity(address recipient, uint256 reserveIn, uint256 minPriceLimit) external;
 
     /**
      * @notice  Remove reserve liquidity from inverse bonding curve
@@ -153,7 +153,7 @@ interface IInverseBondingCurve {
      * @param   recipient : Account to receive reserve
      * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
      */
-    function removeLiquidity(address recipient, uint256 maxPriceLimit) external;
+    function removeLiquidity(address recipient, uint256 inverseTokenIn, uint256 maxPriceLimit) external;
 
     /**
      * @notice  Buy IBC token with reserve
@@ -162,30 +162,30 @@ interface IInverseBondingCurve {
      * @param   exactAmountOut : Exact amount IBC token to mint to user
      * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
      */
-    function buyTokens(address recipient, uint256 exactAmountOut, uint256 maxPriceLimit) external payable;
+    function buyTokens(address recipient, uint256 reserveIn, uint256 exactAmountOut, uint256 maxPriceLimit) external payable;
 
     /**
      * @notice  Sell IBC token to get reserve back
      * @dev
      * @param   recipient : Account to receive reserve
-     * @param   amount : IBC token amount to sell
+     * @param   inverseTokenIn : IBC token amount to sell
      * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
      */
-    function sellTokens(address recipient, uint256 amount, uint256 minPriceLimit) external;
+    function sellTokens(address recipient, uint256 inverseTokenIn, uint256 minPriceLimit) external;
 
     /**
      * @notice  Stake IBC token to get fee reward
      * @dev
      * @param   amount : Token amount to stake
      */
-    function stake(uint256 amount) external;
+    function stake(address recipient, uint256 amount) external;
 
     /**
      * @notice  Unstake staked IBC token
      * @dev
      * @param   amount : Token amount to unstake
      */
-    function unstake(uint256 amount) external;
+    function unstake(address recipient, uint256 amount) external;
 
     /**
      * @notice  Claim fee reward
