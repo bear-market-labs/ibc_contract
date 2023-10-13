@@ -20,7 +20,7 @@ import "./Enums.sol";
 import "./LpPosition.sol";
 import "./CurveLibrary.sol";
 
-import "./interface/IInverseBondingCurveFactory.sol";
+import "./interface/IInverseBondingCurveAdmin.sol";
 
 /**
  * @title   Inverse bonding curve implementation contract
@@ -31,7 +31,7 @@ contract InverseBondingCurve is
     Initializable,
     UUPSUpgradeable,
     OwnableUpgradeable,
-    PausableUpgradeable,
+    // PausableUpgradeable,
     IInverseBondingCurve
 {
     using FixedPoint for uint256;
@@ -42,13 +42,13 @@ contract InverseBondingCurve is
     address private _protocolFeeOwner;
 
     // swap/LP fee percent = _lpFeePercent + _stakingFeePercent + _protocolFeePercent
-    uint256[MAX_ACTION_COUNT] private _lpFeePercent;
-    uint256[MAX_ACTION_COUNT] private _stakingFeePercent;
-    uint256[MAX_ACTION_COUNT] private _protocolFeePercent;
+    // uint256[MAX_ACTION_COUNT] private _lpFeePercent;
+    // uint256[MAX_ACTION_COUNT] private _stakingFeePercent;
+    // uint256[MAX_ACTION_COUNT] private _protocolFeePercent;
 
     IInverseBondingCurveToken private _inverseToken;
     IERC20 private _reserveToken;
-    IInverseBondingCurveFactory _factory;
+    IInverseBondingCurveAdmin _adminContract;
     address _router;
 
     uint256 private _parameterInvariant;
@@ -75,9 +75,33 @@ contract InverseBondingCurve is
     }
 
     modifier onlyProtocolFeeOwner() {
-        if(msg.sender == _factory.protocolFeeOwner()){
+        if(msg.sender == _adminContract.feeOwner()){
             revert Unauthorized();
         }
+        _;
+    }
+
+      /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     */
+    modifier whenNotPaused() {
+        require(_adminContract.paused(), "Pausable: paused");
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     *
+     * Requirements:
+     *
+     * - The contract must be paused.
+     */
+    modifier whenPaused() {
+        require(_adminContract.paused(), "Pausable: paused");
         _;
     }
 
@@ -142,7 +166,7 @@ contract InverseBondingCurve is
     /**
      * @notice  .
      * @dev     .
-     * @param   factory  .
+     * @param   adminContract  .
      * @param   router  .
      * @param   inverseTokenContractAddress  .
      * @param   reserveTokenAddress  .
@@ -150,24 +174,22 @@ contract InverseBondingCurve is
      * @param   supply  .
      * @param   price  .
      */
-    function initialize(address factory, address router, address inverseTokenContractAddress, address reserveTokenAddress, uint256 reserve, uint256 supply, uint256 price)
+    function initialize(address adminContract, address router, address inverseTokenContractAddress, address reserveTokenAddress, uint256 reserve, uint256 supply, uint256 price)
         external
         initializer
     {
         if (reserve == 0 || supply == 0 || price == 0) revert ParameterZeroNotAllowed();
-        if (inverseTokenContractAddress == address(0)) revert EmptyAddress();
+        if (inverseTokenContractAddress == address(0)) revert EmptyAddress();        
 
-        
-
-        __Pausable_init();
+        // __Pausable_init();
         __Ownable_init();
         __UUPSUpgradeable_init();
 
-        _intialFeeConfig();
+        // _intialFeeConfig();
 
         _inverseToken = IInverseBondingCurveToken(inverseTokenContractAddress);
         _reserveToken = IERC20(reserveTokenAddress);
-        _factory = IInverseBondingCurveFactory(factory);
+        _adminContract = IInverseBondingCurveAdmin(adminContract);
         _router = router;
         
         _curveReserveBalance = reserve;
@@ -183,35 +205,35 @@ contract InverseBondingCurve is
 
         CurveLibrary.initializeRewardEMA(_feeStates);
 
-        address protocolFeeOwner = _factory.protocolFeeOwner();
+        address protocolFeeOwner = _adminContract.feeOwner();
         _updateLpReward(protocolFeeOwner);
         _createLpPosition(lpTokenAmount, supply, protocolFeeOwner);
 
-        emit FeeOwnerChanged(protocolFeeOwner);
+        // emit FeeOwnerChanged(protocolFeeOwner);
         emit CurveInitialized(msg.sender, _curveReserveBalance, supply, price, _parameterUtilization, _parameterInvariant);
     }
 
-    /**
-     * @notice  Update fee config
-     * @dev
-     * @param   actionType : Fee configuration for : Buy/Sell/Add liquidity/Remove liquidity)
-     * @param   lpFee : The percent of fee reward to LP
-     * @param   stakingFee : The percent of fee reward to staker
-     * @param   protocolFee : The percent of fee reward to protocol
-     */
-    function updateFeeConfig(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
-        external
-        onlyOwner
-    {
-        if ((lpFee + stakingFee + protocolFee) >= MAX_FEE_PERCENT) revert FeePercentOutOfRange();
-        if (uint256(actionType) >= MAX_ACTION_COUNT) revert InvalidInput();
+    // /**
+    //  * @notice  Update fee config
+    //  * @dev
+    //  * @param   actionType : Fee configuration for : Buy/Sell/Add liquidity/Remove liquidity)
+    //  * @param   lpFee : The percent of fee reward to LP
+    //  * @param   stakingFee : The percent of fee reward to staker
+    //  * @param   protocolFee : The percent of fee reward to protocol
+    //  */
+    // function updateFeeConfig(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
+    //     external
+    //     onlyOwner
+    // {
+    //     if ((lpFee + stakingFee + protocolFee) >= MAX_FEE_PERCENT) revert FeePercentOutOfRange();
+    //     if (uint256(actionType) >= MAX_ACTION_COUNT) revert InvalidInput();
 
-        _lpFeePercent[uint256(actionType)] = lpFee;
-        _stakingFeePercent[uint256(actionType)] = stakingFee;
-        _protocolFeePercent[uint256(actionType)] = protocolFee;
+    //     _lpFeePercent[uint256(actionType)] = lpFee;
+    //     _stakingFeePercent[uint256(actionType)] = stakingFee;
+    //     _protocolFeePercent[uint256(actionType)] = protocolFee;
 
-        emit FeeConfigChanged(actionType, lpFee, stakingFee, protocolFee);
-    }
+    //     emit FeeConfigChanged(actionType, lpFee, stakingFee, protocolFee);
+    // }
 
     // /**
     //  * @notice  Update protocol fee owner
@@ -230,19 +252,19 @@ contract InverseBondingCurve is
      * @notice  Pause contract
      * @dev     Not able to buy/sell/add liquidity/remove liquidity/transfer token
      */
-    function pause() external onlyOwner {
-        _pause();
-        _inverseToken.pause();
-    }
+    // function pause() external onlyOwner {
+    //     _pause();
+    //     _inverseToken.pause();
+    // }
 
     /**
      * @notice  Unpause contract
      * @dev
      */
-    function unpause() external onlyOwner {
-        _unpause();
-        _inverseToken.unpause();
-    }
+    // function unpause() external onlyOwner {
+    //     _unpause();
+    //     _inverseToken.unpause();
+    // }
 
     /**
      * @notice  Add reserve liquidity to inverse bonding curve
@@ -274,7 +296,7 @@ contract InverseBondingCurve is
         emit LiquidityAdded(sourceAccount, recipient, reserveIn, mintToken, _parameterUtilization, _parameterInvariant);
     }
 
-    function _getSourceAccount(address recipient) private returns (address){
+    function _getSourceAccount(address recipient) private view returns (address){
         return msg.sender != _router? msg.sender : recipient;
     }
 
@@ -588,33 +610,16 @@ contract InverseBondingCurve is
         );
     }
 
-    /**
-     * @notice  Query fee configuration
-     * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
-     * @return  lpFee : The percent of fee reward to LP
-     * @return  stakingFee : The percent of fee reward to staker
-     * @return  protocolFee : The percent of fee reward to protocol
-     */
-    function feeConfig()
-        external
-        view
-        returns (
-            uint256[MAX_ACTION_COUNT] memory lpFee,
-            uint256[MAX_ACTION_COUNT] memory stakingFee,
-            uint256[MAX_ACTION_COUNT] memory protocolFee
-        )
-    {
-        return (_lpFeePercent, _stakingFeePercent, _protocolFeePercent);
-    }
 
-    /**
-     * @notice  Query protocol fee owner
-     * @dev
-     * @return  address : protocol fee owner
-     */
-    function feeOwner() external view returns (address) {
-        return _protocolFeeOwner;
-    }
+
+    // /**
+    //  * @notice  Query protocol fee owner
+    //  * @dev
+    //  * @return  address : protocol fee owner
+    //  */
+    // function feeOwner() external view returns (address) {
+    //     return _protocolFeeOwner;
+    // }
 
     /**
      * @notice  Query reward of account
@@ -718,17 +723,7 @@ contract InverseBondingCurve is
         return _totalStaked;
     }
 
-    /**
-     * @notice  Initialize default fee percent
-     * @dev
-     */
-    function _intialFeeConfig() private {
-        for (uint8 i = 0; i < MAX_ACTION_COUNT; i++) {
-            _lpFeePercent[i] = LP_FEE_PERCENT;
-            _stakingFeePercent[i] = STAKE_FEE_PERCENT;
-            _protocolFeePercent[i] = PROTOCOL_FEE_PERCENT;
-        }
-    }
+
     /**
      * @notice  Increase reserve parameter of inverse bonding curve
      * @dev
@@ -811,7 +806,7 @@ contract InverseBondingCurve is
         }
     }
 
-    function _checkPayment(IERC20 token, uint256 previousAmount, uint256 inputAmount) private returns (uint256){
+    function _checkPayment(IERC20 token, uint256 previousAmount, uint256 inputAmount) private view returns (uint256){
         uint256 currentBalance = token.balanceOf(address(this));
         if(currentBalance - previousAmount < inputAmount){
             revert InsufficientBalance();
@@ -930,18 +925,18 @@ contract InverseBondingCurve is
         view
         returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
     {
+        (uint256 lpFeePercent, uint256 stakeFeePercent, uint256 protocolFeePercent) = _adminContract.feeConfig(action);
         if (amountAfterFee) {
-            uint256 totalFeePercent = _lpFeePercent[uint256(action)] + _stakingFeePercent[uint256(action)]
-                + _protocolFeePercent[uint256(action)];
+            uint256 totalFeePercent = lpFeePercent + stakeFeePercent + protocolFeePercent;
             uint256 amountBeforeFee = amount.divDown(ONE_UINT - totalFeePercent);
             uint256 totalFee = amountBeforeFee - amount;
-            lpFee = totalFee.mulDown(_lpFeePercent[uint256(action)]).divDown(totalFeePercent);
-            stakingFee = totalFee.mulDown(_stakingFeePercent[uint256(action)]).divDown(totalFeePercent);
+            lpFee = totalFee.mulDown(lpFeePercent).divDown(totalFeePercent);
+            stakingFee = totalFee.mulDown(stakeFeePercent).divDown(totalFeePercent);
             protocolFee = totalFee - lpFee - stakingFee;
         } else {
-            lpFee = amount.mulDown(_lpFeePercent[uint256(action)]);
-            stakingFee = amount.mulDown(_stakingFeePercent[uint256(action)]);
-            protocolFee = amount.mulDown(_protocolFeePercent[uint256(action)]);
+            lpFee = amount.mulDown(lpFeePercent);
+            stakingFee = amount.mulDown(stakeFeePercent);
+            protocolFee = amount.mulDown(protocolFeePercent);
         }
     }
 

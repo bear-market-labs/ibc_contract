@@ -122,22 +122,7 @@ interface IInverseBondingCurve {
         address indexed from, address indexed recipient, uint256 inverseTokenAmount, uint256 reserveAmount
     );
 
-    /**
-     * @notice  Emmitted when fee configuration changed
-     * @dev
-     * @param   actionType : The action type of the changed fee configuration. (Buy/Sell/Add liquidity/Remove liquidity)
-     * @param   lpFee : Fee reward percent for LP
-     * @param   stakingFee : Fee reward percent for Staker
-     * @param   protocolFee : Fee reward percent for Protocol
-     */
-    event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 
-    /**
-     * @notice  Emitted when protocol fee owner changed
-     * @dev
-     * @param   feeOwner : New fee owner of protocol fee
-     */
-    event FeeOwnerChanged(address feeOwner);
 
     /**
      * @notice  Add reserve liquidity to inverse bonding curve
@@ -228,21 +213,21 @@ interface IInverseBondingCurve {
      */
     function curveParameters() external view returns (CurveParameter memory parameters);
 
-    /**
-     * @notice  Query fee configuration
-     * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
-     * @return  lpFee : The percent of fee reward to LP
-     * @return  stakingFee : The percent of fee reward to staker
-     * @return  protocolFee : The percent of fee reward to protocol
-     */
-    function feeConfig()
-        external
-        view
-        returns (
-            uint256[MAX_ACTION_COUNT] memory lpFee,
-            uint256[MAX_ACTION_COUNT] memory stakingFee,
-            uint256[MAX_ACTION_COUNT] memory protocolFee
-        );
+    // /**
+    //  * @notice  Query fee configuration
+    //  * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
+    //  * @return  lpFee : The percent of fee reward to LP
+    //  * @return  stakingFee : The percent of fee reward to staker
+    //  * @return  protocolFee : The percent of fee reward to protocol
+    //  */
+    // function feeConfig()
+    //     external
+    //     view
+    //     returns (
+    //         uint256[MAX_ACTION_COUNT] memory lpFee,
+    //         uint256[MAX_ACTION_COUNT] memory stakingFee,
+    //         uint256[MAX_ACTION_COUNT] memory protocolFee
+    //     );
 
     /**
      * @notice  Query reward of account
