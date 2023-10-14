@@ -2,8 +2,8 @@
 pragma solidity ^0.8.18;
 
 import "../Enums.sol";
-interface IInverseBondingCurveAdmin {
 
+interface IInverseBondingCurveAdmin {
     /**
      * @dev Returns true if the contract is paused, and false otherwise.
      */
@@ -15,7 +15,7 @@ interface IInverseBondingCurveAdmin {
 
     function curveImplementation() external view returns (address);
 
-        /**
+    /**
      * @notice  Query fee configuration
      * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
      * @return  lpFee : The percent of fee reward to LP
@@ -25,9 +25,5 @@ interface IInverseBondingCurveAdmin {
     function feeConfig(ActionType actionType)
         external
         view
-        returns (
-            uint256 lpFee,
-            uint256 stakingFee,
-            uint256 protocolFee
-        );
+        returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 }

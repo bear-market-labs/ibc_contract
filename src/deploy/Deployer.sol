@@ -34,7 +34,6 @@ import "openzeppelin/utils/Create2.sol";
 //         creationCode = abi.encodePacked(proxyContractCode, abi.encode(_cruveContract, ""));
 //         _proxyContract = Create2.deploy(0, salt, creationCode);
 
-
 //         bytes memory data = abi.encodeWithSignature(
 //             "initialize(uint256,uint256,uint256,address,address,address)", reserve,supply, price, _tokenContract, reserveTokenAddress, protocolFeeOwner
 //         );

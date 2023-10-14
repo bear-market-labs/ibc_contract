@@ -14,7 +14,7 @@ error FailToExecute(address pool, bytes data);
 error InvalidInput();
 error Unauthorized();
 error InvariantChanged(uint256 invariant, uint256 newInvariant);
-error UtilizationChanged(uint256 utilization, uint256 newUtilization);
+error UtilizationChanged(uint256 newUtilization);
 error LpAlreadyExist();
 error LpNotExist();
 error PoolAlreadyExist();

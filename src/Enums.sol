@@ -25,5 +25,7 @@ enum CommandType {
     SELL_TOKEN,
     ADD_LIQUIDITY,
     REMOVE_LIQUIDITY,
-    CLAIM_REWARD
+    CLAIM_REWARD,
+    STAKE,
+    UNSTAKE
 }

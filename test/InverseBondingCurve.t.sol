@@ -794,7 +794,7 @@ import "forge-std/console2.sol";
 
 //         assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_LP)][0], fee.divDown(3e18));
 //         assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_LP)][1], fee.divDown(3e18));
-//         assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_LP)][2], fee.divDown(3e18));        
+//         assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_LP)][2], fee.divDown(3e18));
 //     }
 
 //     function testRewardState() public {

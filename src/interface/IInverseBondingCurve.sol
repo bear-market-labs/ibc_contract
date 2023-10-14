@@ -20,7 +20,6 @@ interface IInverseBondingCurve {
      * @param   reserve : Initial reserve
      * @param   supply : Initial supply credit to fee owner
      * @param   initialPrice : Initial IBC token price
-     * @param   parameterUtilization : Parameter reserve utilization: Price * Supply / Reserve
      * @param   parameterInvariant : Parameter invariant which won't change during buy/sell: Reserve/ (Supply ** utilization)
      */
     event CurveInitialized(
@@ -28,7 +27,6 @@ interface IInverseBondingCurve {
         uint256 reserve,
         uint256 supply,
         uint256 initialPrice,
-        uint256 parameterUtilization,
         uint256 parameterInvariant
     );
 
@@ -39,7 +37,6 @@ interface IInverseBondingCurve {
      * @param   recipient : Account to receive LP position and LP reward
      * @param   amountIn : Reserve amount
      * @param   amountOut : LP token amount
-     * @param   newParameterUtilization : New parameter reserve utilization after LP added
      * @param   newParameterInvariant : New parameter invariant after LP added
      */
     event LiquidityAdded(
@@ -47,7 +44,6 @@ interface IInverseBondingCurve {
         address indexed recipient,
         uint256 amountIn,
         uint256 amountOut,
-        uint256 newParameterUtilization,
         uint256 newParameterInvariant
     );
 
@@ -60,7 +56,6 @@ interface IInverseBondingCurve {
      * @param   reserveAmountOut : Reserve send to recipient
      * @param   inverseTokenCredit : IBC token credit
      * @param   inverseTokenBurned : IBC token debt which need to burn
-     * @param   newParameterUtilization : New parameter reserve utilization after LP removed
      * @param   newParameterInvariant : New parameter invariant after LP removed
      */
     event LiquidityRemoved(
@@ -70,7 +65,6 @@ interface IInverseBondingCurve {
         uint256 reserveAmountOut,
         uint256 inverseTokenCredit,
         uint256 inverseTokenBurned,
-        uint256 newParameterUtilization,
         uint256 newParameterInvariant
     );
 
@@ -122,8 +116,6 @@ interface IInverseBondingCurve {
         address indexed from, address indexed recipient, uint256 inverseTokenAmount, uint256 reserveAmount
     );
 
-
-
     /**
      * @notice  Add reserve liquidity to inverse bonding curve
      * @dev     LP will get virtual LP token(non-transferable), and one account can only hold one LP position(Need to close and reopen if user want to change)
@@ -147,7 +139,9 @@ interface IInverseBondingCurve {
      * @param   exactAmountOut : Exact amount IBC token to mint to user
      * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
      */
-    function buyTokens(address recipient, uint256 reserveIn, uint256 exactAmountOut, uint256 maxPriceLimit) external payable;
+    function buyTokens(address recipient, uint256 reserveIn, uint256 exactAmountOut, uint256 maxPriceLimit)
+        external
+        payable;
 
     /**
      * @notice  Sell IBC token to get reserve back

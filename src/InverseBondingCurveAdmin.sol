@@ -9,7 +9,7 @@ import "./Enums.sol";
 
 import "./InverseBondingCurveFactory.sol";
 
-contract InverseBondingCurveAdmin is Ownable, Pausable{
+contract InverseBondingCurveAdmin is Ownable, Pausable {
     address private _weth;
 
     address private _router;
@@ -17,9 +17,11 @@ contract InverseBondingCurveAdmin is Ownable, Pausable{
     address private _curveImplementation;
     address private _protocolFeeOwner;
 
-    uint256[MAX_ACTION_COUNT] private _lpFeePercent;
-    uint256[MAX_ACTION_COUNT] private _stakingFeePercent;
-    uint256[MAX_ACTION_COUNT] private _protocolFeePercent;
+    uint256[MAX_ACTION_COUNT] private _lpFeePercent = [LP_FEE_PERCENT, LP_FEE_PERCENT, LP_FEE_PERCENT, LP_FEE_PERCENT];
+    uint256[MAX_ACTION_COUNT] private _stakingFeePercent =
+        [STAKE_FEE_PERCENT, STAKE_FEE_PERCENT, STAKE_FEE_PERCENT, STAKE_FEE_PERCENT];
+    uint256[MAX_ACTION_COUNT] private _protocolFeePercent =
+        [PROTOCOL_FEE_PERCENT, PROTOCOL_FEE_PERCENT, PROTOCOL_FEE_PERCENT, PROTOCOL_FEE_PERCENT];
 
     /**
      * @notice  Emitted when protocol fee owner changed
@@ -38,16 +40,19 @@ contract InverseBondingCurveAdmin is Ownable, Pausable{
      */
     event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 
-    constructor(address wethAddress, bytes memory curveContractCode,
+    constructor(
+        address wethAddress,
+        bytes memory curveContractCode,
         bytes memory tokenContractCode,
-        bytes memory proxyContractCode) Ownable() {
+        bytes memory proxyContractCode
+    ) Ownable() {
         _weth = wethAddress;
 
         bytes32 salt = bytes32(uint256(uint160(msg.sender)) + block.number);
 
         _curveImplementation = Create2.deploy(0, salt, abi.encodePacked(curveContractCode));
 
-        _intialFeeConfig();
+        // _intialFeeConfig();
         _createFactory(tokenContractCode, proxyContractCode);
     }
 
@@ -69,28 +74,24 @@ contract InverseBondingCurveAdmin is Ownable, Pausable{
     function feeConfig(ActionType actionType)
         external
         view
-        returns (
-            uint256 lpFee,
-            uint256 stakingFee,
-            uint256 protocolFee
-        )
+        returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
     {
         lpFee = _lpFeePercent[uint256(actionType)];
         stakingFee = _stakingFeePercent[uint256(actionType)];
         protocolFee = _protocolFeePercent[uint256(actionType)];
     }
 
-        /**
-     * @notice  Initialize default fee percent
-     * @dev
-     */
-    function _intialFeeConfig() private {
-        for (uint8 i = 0; i < MAX_ACTION_COUNT; i++) {
-            _lpFeePercent[i] = LP_FEE_PERCENT;
-            _stakingFeePercent[i] = STAKE_FEE_PERCENT;
-            _protocolFeePercent[i] = PROTOCOL_FEE_PERCENT;
-        }
-    }
+    //     /**
+    //  * @notice  Initialize default fee percent
+    //  * @dev
+    //  */
+    // function _intialFeeConfig() private {
+    //     for (uint8 i = 0; i < MAX_ACTION_COUNT; i++) {
+    //         _lpFeePercent[i] = LP_FEE_PERCENT;
+    //         _stakingFeePercent[i] = STAKE_FEE_PERCENT;
+    //         _protocolFeePercent[i] = PROTOCOL_FEE_PERCENT;
+    //     }
+    // }
 
     /**
      * @notice  Update fee config
@@ -128,7 +129,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable{
     }
 
     function updateRouter(address routerAddress) public onlyOwner {
-        if(routerAddress == address(0)) revert EmptyAddress();
+        if (routerAddress == address(0)) revert EmptyAddress();
 
         _router = routerAddress;
     }
@@ -137,13 +138,11 @@ contract InverseBondingCurveAdmin is Ownable, Pausable{
         _curveImplementation = newImplementation;
     }
 
-    function _createFactory(
-        bytes memory tokenContractCode,
-        bytes memory proxyContractCode) private {
-        _factory = address(new InverseBondingCurveFactory(address(this), tokenContractCode, proxyContractCode));        
+    function _createFactory(bytes memory tokenContractCode, bytes memory proxyContractCode) private {
+        _factory = address(new InverseBondingCurveFactory(address(this), tokenContractCode, proxyContractCode));
     }
 
-    function factoryAddress() external view returns (address){
+    function factoryAddress() external view returns (address) {
         return _factory;
     }
 
@@ -156,15 +155,15 @@ contract InverseBondingCurveAdmin is Ownable, Pausable{
         return _protocolFeeOwner;
     }
 
-    function weth() external view returns (address){
+    function weth() external view returns (address) {
         return _weth;
     }
 
-    function router() external view returns(address){
+    function router() external view returns (address) {
         return _router;
     }
 
-    function curveImplementation() external view returns (address){
+    function curveImplementation() external view returns (address) {
         return _curveImplementation;
     }
 }

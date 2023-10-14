@@ -191,7 +191,7 @@ library CurveLibrary {
      */
     function _calcParameterAlpha(FeeState storage feeState) private view returns (uint256 alpha) {
         int256 exponent = int256((block.number - feeState.emaRewardUpdateBlockNumber).divDown(DAILY_BLOCK_COUNT));
-        alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? 0 : ONE_UINT - uint256(LogExpMath.exp(-exponent));
+        alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? 0 : UINT_ONE - uint256(LogExpMath.exp(-exponent));
     }
 
     /**
@@ -222,5 +222,21 @@ library CurveLibrary {
         } else {
             rewardEMA = feeState.emaReward[uint256(rewardType)];
         }
+    }
+
+    function scaleTo(uint256 vaule, uint8 targetDecimals) public pure returns (uint256) {
+        if (targetDecimals == DEFAULT_DECIMALS) return vaule;
+
+        return targetDecimals < DEFAULT_DECIMALS
+            ? vaule / (10 ** (DEFAULT_DECIMALS - targetDecimals))
+            : vaule * (10 ** (targetDecimals - DEFAULT_DECIMALS));
+    }
+
+    function scaleFrom(uint256 vaule, uint8 fromDecimals) public pure returns (uint256) {
+        if (fromDecimals == DEFAULT_DECIMALS) return vaule;
+
+        return fromDecimals < DEFAULT_DECIMALS
+            ?  vaule * (10 ** (DEFAULT_DECIMALS - fromDecimals))
+            : vaule / (10 ** (fromDecimals - DEFAULT_DECIMALS));
     }
 }
