@@ -42,18 +42,20 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
     constructor(
         address wethAddress,
-        bytes memory curveContractCode,
-        bytes memory tokenContractCode,
-        bytes memory proxyContractCode
+        address routerAddress,
+        address protocolFeeOwner,
+        bytes memory curveContractCode
     ) Ownable() {
         _weth = wethAddress;
+        _router = routerAddress;
+        _protocolFeeOwner = protocolFeeOwner;
 
         bytes32 salt = bytes32(uint256(uint160(msg.sender)) + block.number);
 
         _curveImplementation = Create2.deploy(0, salt, abi.encodePacked(curveContractCode));
 
         // _intialFeeConfig();
-        _createFactory(tokenContractCode, proxyContractCode);
+        _createFactory();
     }
 
     function pause() external onlyOwner {
@@ -138,8 +140,8 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
         _curveImplementation = newImplementation;
     }
 
-    function _createFactory(bytes memory tokenContractCode, bytes memory proxyContractCode) private {
-        _factory = address(new InverseBondingCurveFactory(address(this), tokenContractCode, proxyContractCode));
+    function _createFactory() private {
+        _factory = address(new InverseBondingCurveFactory(address(this)));
     }
 
     function factoryAddress() external view returns (address) {

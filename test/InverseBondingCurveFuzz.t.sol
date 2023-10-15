@@ -141,7 +141,7 @@ import "forge-std/console2.sol";
 
 //     //     uint256 _parameterUtilization = param.price.mulDown(param.supply).divDown(param.reserve);
 
-//     //     // require(_parameterUtilization < ONE_UINT, ERR_UTILIZATION_INVALID);
+//     //     // require(_parameterUtilization < UINT_ONE, ERR_UTILIZATION_INVALID);
 //     //     uint256 _parameterInvariant = param.reserve.divDown(param.supply.powDown(_parameterUtilization));
 
 //     //     console2.log("new calc _parameterUtilization:", _parameterUtilization);

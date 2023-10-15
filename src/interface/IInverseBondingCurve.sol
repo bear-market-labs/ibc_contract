@@ -24,6 +24,7 @@ interface IInverseBondingCurve {
      */
     event CurveInitialized(
         address indexed from,
+        address indexed reserveTokenAddress,
         uint256 reserve,
         uint256 supply,
         uint256 initialPrice,
@@ -199,6 +200,9 @@ interface IInverseBondingCurve {
      * @return  address : IBC token contract address
      */
     function inverseTokenAddress() external view returns (address);
+
+
+    function reserveTokenAddress() external view returns (address);
 
     /**
      * @notice  Query current inverse bonding curve parameter

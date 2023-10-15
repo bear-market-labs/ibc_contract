@@ -19,3 +19,4 @@ error LpAlreadyExist();
 error LpNotExist();
 error PoolAlreadyExist();
 error CommandUnsupport();
+error EtherNotAccept();

@@ -254,7 +254,7 @@ import "forge-std/console2.sol";
 //         assertEqWithError(tokenContract.balanceOf(recipient), 0);
 //         (lpBalance, ibcCredit) = curveContract.liquidityPositionOf(recipient);
 //         assertEqWithError(lpBalance, 0);
-//         assertEqWithError(balanceAfter - balanceBefore, uint256(2e18).mulDown(ONE_UINT.sub(FEE_PERCENT.mulDown(3e18))));
+//         assertEqWithError(balanceAfter - balanceBefore, uint256(2e18).mulDown(UINT_ONE.sub(FEE_PERCENT.mulDown(3e18))));
 //     }
 
 //     function testRemoveLiquidityWithAdditionalBurn() public {

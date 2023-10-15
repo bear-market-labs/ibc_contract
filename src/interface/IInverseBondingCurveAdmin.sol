@@ -15,6 +15,9 @@ interface IInverseBondingCurveAdmin {
 
     function curveImplementation() external view returns (address);
 
+    function owner() external view returns(address);
+    function router() external view returns (address);
+
     /**
      * @notice  Query fee configuration
      * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
