@@ -199,6 +199,11 @@ interface IInverseBondingCurve {
      */
     function inverseTokenAddress() external view returns (address);
 
+    /**
+     * @notice  Query reserve token contract address
+     * @dev     
+     * @return  address : Reserve token address of curve
+     */
     function reserveTokenAddress() external view returns (address);
 
     /**
@@ -207,22 +212,6 @@ interface IInverseBondingCurve {
      * @return  parameters : See CurveParameter for detail
      */
     function curveParameters() external view returns (CurveParameter memory parameters);
-
-    // /**
-    //  * @notice  Query fee configuration
-    //  * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
-    //  * @return  lpFee : The percent of fee reward to LP
-    //  * @return  stakingFee : The percent of fee reward to staker
-    //  * @return  protocolFee : The percent of fee reward to protocol
-    //  */
-    // function feeConfig()
-    //     external
-    //     view
-    //     returns (
-    //         uint256[MAX_ACTION_COUNT] memory lpFee,
-    //         uint256[MAX_ACTION_COUNT] memory stakingFee,
-    //         uint256[MAX_ACTION_COUNT] memory protocolFee
-    //     );
 
     /**
      * @notice  Query reward of account

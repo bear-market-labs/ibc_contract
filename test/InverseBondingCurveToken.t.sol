@@ -34,19 +34,7 @@ contract InverseBondingCurveTokenTest is Test {
         vm.stopPrank();
     }
 
-    function testRevertIfPauseFromNonOwner() public {
-        vm.startPrank(nonOwner);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
-        tokenContract.pause();
-        vm.stopPrank();
-    }
-
-    function testRevertIfUnpauseFromNonOwner() public {
-        vm.startPrank(nonOwner);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
-        tokenContract.unpause();
-        vm.stopPrank();
-    }
+   
 
     function testRevertIfTransferOwnerFromNonOwner() public {
         vm.startPrank(nonOwner);
@@ -75,37 +63,11 @@ contract InverseBondingCurveTokenTest is Test {
         vm.stopPrank();
     }
 
-    function testPause() public {
-        vm.startPrank(owner);
-        tokenContract.mint(owner, 1);
-        assertEq(tokenContract.paused(), false);
-        tokenContract.pause();
-        assertEq(tokenContract.paused(), true);
-        vm.expectRevert(bytes("Pausable: paused"));
-        tokenContract.transfer(nonOwner, 1);
-        vm.stopPrank();
-    }
-
-    function testUnpause() public {
-        vm.startPrank(owner);
-        tokenContract.mint(owner, 1);
-        tokenContract.pause();
-        assertEq(tokenContract.paused(), true);
-        tokenContract.unpause();
-        tokenContract.transfer(nonOwner, 1);
-        assertEq(tokenContract.balanceOf(nonOwner), 1);
-        vm.stopPrank();
-    }
-
     function testTransferOwner() public {
         vm.startPrank(owner);
         tokenContract.mint(owner, 1);
-        tokenContract.pause();
-        assertEq(tokenContract.paused(), true);
-        tokenContract.unpause();
         tokenContract.transfer(nonOwner, 1);
         assertEq(tokenContract.balanceOf(nonOwner), 1);
-        assertEq(tokenContract.paused(), false);
         vm.stopPrank();
     }
 }

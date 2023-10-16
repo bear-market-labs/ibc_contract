@@ -96,8 +96,7 @@ contract InverseBondingCurveRouter {
             (, uint256 reserveIn, uint256 exactAmountOut, uint256[2] memory priceLimits, uint256[2] memory reserveLimits) =
                 abi.decode(data, (address, uint256, uint256, uint256[2], uint256[2]));
             reserveTokenAmount = reserveIn;
-            poolCallData = abi.encodeWithSignature(
-                "buyTokens(address,uint256,uint256,uint256[2],uint256[2])",
+            poolCallData = abi.encodeWithSignature("buyTokens(address,uint256,uint256,uint256[2],uint256[2])",
                 msg.sender, reserveIn, exactAmountOut, priceLimits, reserveLimits);
         } else if (command == CommandType.SELL_TOKEN) {
             (, uint256 inverseTokenIn, uint256[2] memory priceLimits, uint256[2] memory reserveLimits) =

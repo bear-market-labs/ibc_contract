@@ -86,8 +86,7 @@ contract InverseBondingCurveFactory {
 
         // Initialize Curve contract
         IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), initialReserves);
-        bytes memory data = abi.encodeWithSignature(
-            "initialize(address,address,address,address,uint256)",
+        bytes memory data = abi.encodeWithSignature( "initialize(address,address,address,address,uint256)",
             _admin, _admin.router(), tokenContract, reserveTokenAddress, initialReserves);
 
         (bool success,) = proxyContract.call(data);
