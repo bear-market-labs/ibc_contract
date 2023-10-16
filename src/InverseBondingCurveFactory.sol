@@ -9,7 +9,7 @@ import "./interface/IWETH9.sol";
 import "./Errors.sol";
 
 contract InverseBondingCurveFactory {
-    event Deployed(address cruveContract, address tokenContract, address proxyContract);
+    event PoolCreated(address cruve, address token, address pool, uint256 reserve);
 
     IInverseBondingCurveAdmin private _admin;
 
@@ -20,6 +20,12 @@ contract InverseBondingCurveFactory {
         _admin = IInverseBondingCurveAdmin(adminContract);
     }
 
+    /**
+     * @notice  Create inverse bonding curve
+     * @dev     
+     * @param   reserve : Initial reserve token amount 
+     * @param   reserveTokenAddress : Reverse token address
+     */
     function createPool(uint256 reserve, address reserveTokenAddress) external payable {
         string memory tokenSymbol = "";
         uint256 leftReserve = msg.value;
@@ -92,7 +98,7 @@ contract InverseBondingCurveFactory {
         _poolMap[reserveTokenAddress] = proxyContract;
         pools.push(proxyContract);
 
-        emit Deployed(_cruveContract, address(tokenContract), proxyContract);
+        emit PoolCreated(_cruveContract, address(tokenContract), proxyContract, reserve);
     }
 
     function getPool(address reserveToken) public view returns (address) {

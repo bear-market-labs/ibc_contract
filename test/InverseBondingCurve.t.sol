@@ -6,7 +6,7 @@ import "../src/InverseBondingCurve.sol";
 import "../src/InverseBondingCurveToken.sol";
 import "../src/InverseBondingCurveProxy.sol";
 import "forge-std/console2.sol";
-
+import "./TestUtil.sol";
 // contract InverseBondingCurveTest is Test {
 //     using FixedPoint for uint256;
 

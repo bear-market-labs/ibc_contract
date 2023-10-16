@@ -57,6 +57,32 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(param.lpSupply, 1e18);
     }
 
+    function testRevertIfDuplicatePool() public {
+        uint256 initialReserve = 2e18;
+        uint256 creatorBalanceBefore = address(this).balance;
+        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
+
+        address poolAddress = _factoryContract.getPool(address(0));
+
+        assertEq(_factoryContract.poolLength(), 1);
+        assertEq(_factoryContract.pools(0), poolAddress);
+        assertEq(_factoryContract.getPool(address(_weth)), poolAddress);
+
+        vm.expectRevert();
+        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
+
+
+        ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
+
+        reserveToken.mint(address(this), initialReserve * 2);
+        reserveToken.approve(address(_factoryContract), initialReserve * 2);
+        _factoryContract.createPool(initialReserve, address(reserveToken));
+        assertEq(_factoryContract.poolLength(), 2);
+
+        vm.expectRevert();
+        _factoryContract.createPool(initialReserve, address(reserveToken));
+    }
+
     function testCreateERC20Pool() public {
         uint256 initialReserve = 2e6;
 
@@ -88,5 +114,28 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(param.supply, 1e18);
         assertEq(param.price, 1e18);
         assertEq(param.lpSupply, 1e18);
+    }
+
+    function testMultiplePools() public {
+        uint256 initialReserve = 2e18;
+        uint256 creatorBalanceBefore = address(this).balance;
+        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
+
+        address poolAddress = _factoryContract.getPool(address(0));
+
+        assertEq(_factoryContract.poolLength(), 1);
+        assertEq(_factoryContract.pools(0), poolAddress);
+        assertEq(_factoryContract.getPool(address(_weth)), poolAddress);
+
+
+        ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
+
+        reserveToken.mint(address(this), initialReserve * 2);
+        reserveToken.approve(address(_factoryContract), initialReserve * 2);
+        _factoryContract.createPool(initialReserve, address(reserveToken));
+        assertEq(_factoryContract.poolLength(), 2);
+
+        poolAddress = _factoryContract.getPool(address(reserveToken));
+        assertEq(_factoryContract.pools(1), poolAddress);
     }
 }

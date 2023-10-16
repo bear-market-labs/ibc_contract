@@ -51,7 +51,6 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
         _curveImplementation = Create2.deploy(0, salt, abi.encodePacked(curveContractCode));
 
-        // _intialFeeConfig();
         _createFactory();
     }
 
@@ -79,18 +78,6 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
         stakingFee = _stakingFeePercent[uint256(actionType)];
         protocolFee = _protocolFeePercent[uint256(actionType)];
     }
-
-    //     /**
-    //  * @notice  Initialize default fee percent
-    //  * @dev
-    //  */
-    // function _intialFeeConfig() private {
-    //     for (uint8 i = 0; i < MAX_ACTION_COUNT; i++) {
-    //         _lpFeePercent[i] = LP_FEE_PERCENT;
-    //         _stakingFeePercent[i] = STAKE_FEE_PERCENT;
-    //         _protocolFeePercent[i] = PROTOCOL_FEE_PERCENT;
-    //     }
-    // }
 
     /**
      * @notice  Update fee config
@@ -127,20 +114,39 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
         emit FeeOwnerChanged(protocolFeeOwner);
     }
 
+    /**
+     * @notice  Update router contract address
+     * @dev     
+     * @param   routerAddress : Router contract address
+     */
     function updateRouter(address routerAddress) public onlyOwner {
         if (routerAddress == address(0)) revert EmptyAddress();
 
         _router = routerAddress;
     }
 
+    /**
+     * @notice  Upgrade curve implementation contract
+     * @dev     .
+     * @param   newImplementation : New curve contract implementation
+     */
     function upgradeCurveTo(address newImplementation) external onlyOwner {
         _curveImplementation = newImplementation;
     }
 
+    /**
+     * @notice  Create curve factory
+     * @dev     
+     */
     function _createFactory() private {
         _factory = address(new InverseBondingCurveFactory(address(this)));
     }
 
+    /**
+     * @notice  Get factory contract address
+     * @dev     
+     * @return  address : Factory contract address
+     */
     function factoryAddress() external view returns (address) {
         return _factory;
     }
@@ -154,14 +160,29 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
         return _protocolFeeOwner;
     }
 
+    /**
+     * @notice  Wrap eth contract address
+     * @dev     
+     * @return  address : Wrap eth contract address
+     */
     function weth() external view returns (address) {
         return _weth;
     }
 
+    /**
+     * @notice  Query router contract address
+     * @dev     
+     * @return  address : router contract address
+     */
     function router() external view returns (address) {
         return _router;
     }
 
+    /**
+     * @notice  Get curve implementation
+     * @dev     
+     * @return  address : curve implementation contract
+     */
     function curveImplementation() external view returns (address) {
         return _curveImplementation;
     }
