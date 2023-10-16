@@ -45,7 +45,7 @@ contract InverseBondingCurveRouterTest is Test {
         _weth = new WethToken();
         _router = new InverseBondingCurveRouter(address(_weth));
         _adminContract =
-        new InverseBondingCurveAdmin(address(_weth), address(_router), feeOwner, type(InverseBondingCurve).creationCode);
+            new InverseBondingCurveAdmin(address(_weth), address(_router), feeOwner, type(InverseBondingCurve).creationCode);
 
         _factoryContract = InverseBondingCurveFactory(_adminContract.factoryAddress());
     }
@@ -54,11 +54,11 @@ contract InverseBondingCurveRouterTest is Test {
         uint256 initialReserve = 2e18;
         uint256 buyReserve = 2e18;
         uint256 creatorBalanceBefore = address(this).balance;
-        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
+        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0));
 
         assertEq(creatorBalanceBefore - address(this).balance, initialReserve);
 
-        address poolAddress = _factoryContract.getPool(address(0));
+        address poolAddress = _factoryContract.getCurve(address(0));
         IInverseBondingCurve curveContract = IInverseBondingCurve(poolAddress);
         InverseBondingCurveToken tockenContract = InverseBondingCurveToken(curveContract.inverseTokenAddress());
 
@@ -132,9 +132,9 @@ contract InverseBondingCurveRouterTest is Test {
         reserveToken.mint(address(this), initialReserve);
         reserveToken.approve(address(_factoryContract), initialReserve);
 
-        _factoryContract.createPool(initialReserve, address(reserveToken));
+        _factoryContract.createCurve(initialReserve, address(reserveToken));
 
-        address poolAddress = _factoryContract.getPool(address(reserveToken));
+        address poolAddress = _factoryContract.getCurve(address(reserveToken));
         IInverseBondingCurve curveContract = IInverseBondingCurve(poolAddress);
         InverseBondingCurveToken tockenContract = InverseBondingCurveToken(curveContract.inverseTokenAddress());
 

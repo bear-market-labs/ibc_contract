@@ -23,8 +23,7 @@ contract InverseBondingCurveFactoryTest is Test {
 
     function setUp() public {
         _weth = new WethToken();
-        _adminContract =
-            new InverseBondingCurveAdmin(address(_weth), owner, feeOwner, type(InverseBondingCurve).creationCode);
+        _adminContract = new InverseBondingCurveAdmin(address(_weth), owner, feeOwner, type(InverseBondingCurve).creationCode);
 
         _factoryContract = InverseBondingCurveFactory(_adminContract.factoryAddress());
     }
@@ -32,22 +31,21 @@ contract InverseBondingCurveFactoryTest is Test {
     function testCreateETHPool() public {
         uint256 initialReserve = 2e18;
         uint256 creatorBalanceBefore = address(this).balance;
-        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
+        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0));
 
         assertEq(creatorBalanceBefore - address(this).balance, initialReserve);
 
-        address poolAddress = _factoryContract.getPool(address(0));
+        address poolAddress = _factoryContract.getCurve(address(0));
 
         assert(poolAddress != address(0));
-        assertEq(_factoryContract.poolLength(), 1);
-        assertEq(_factoryContract.pools(0), poolAddress);
-        assertEq(_factoryContract.getPool(address(_weth)), poolAddress);
+        assertEq(_factoryContract.allCurvesLength(), 1);
+        assertEq(_factoryContract.curves(0), poolAddress);
+        assertEq(_factoryContract.getCurve(address(_weth)), poolAddress);
 
         assertEq(InverseBondingCurve(poolAddress).reserveTokenAddress(), address(_weth));
         assertEq(_weth.balanceOf(poolAddress), initialReserve);
 
-        InverseBondingCurveToken tokenContract =
-            InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
+        InverseBondingCurveToken tokenContract = InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
         assertEq(tokenContract.symbol(), "ibETH");
 
         CurveParameter memory param = InverseBondingCurve(poolAddress).curveParameters();
@@ -60,27 +58,26 @@ contract InverseBondingCurveFactoryTest is Test {
     function testRevertIfDuplicatePool() public {
         uint256 initialReserve = 2e18;
         uint256 creatorBalanceBefore = address(this).balance;
-        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
+        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0));
 
-        address poolAddress = _factoryContract.getPool(address(0));
+        address poolAddress = _factoryContract.getCurve(address(0));
 
-        assertEq(_factoryContract.poolLength(), 1);
-        assertEq(_factoryContract.pools(0), poolAddress);
-        assertEq(_factoryContract.getPool(address(_weth)), poolAddress);
+        assertEq(_factoryContract.allCurvesLength(), 1);
+        assertEq(_factoryContract.curves(0), poolAddress);
+        assertEq(_factoryContract.getCurve(address(_weth)), poolAddress);
 
         vm.expectRevert();
-        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
-
+        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0));
 
         ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
 
         reserveToken.mint(address(this), initialReserve * 2);
         reserveToken.approve(address(_factoryContract), initialReserve * 2);
-        _factoryContract.createPool(initialReserve, address(reserveToken));
-        assertEq(_factoryContract.poolLength(), 2);
+        _factoryContract.createCurve(initialReserve, address(reserveToken));
+        assertEq(_factoryContract.allCurvesLength(), 2);
 
         vm.expectRevert();
-        _factoryContract.createPool(initialReserve, address(reserveToken));
+        _factoryContract.createCurve(initialReserve, address(reserveToken));
     }
 
     function testCreateERC20Pool() public {
@@ -92,21 +89,20 @@ contract InverseBondingCurveFactoryTest is Test {
         reserveToken.approve(address(_factoryContract), initialReserve);
 
         uint256 creatorBalanceBefore = reserveToken.balanceOf(address(this));
-        _factoryContract.createPool(initialReserve, address(reserveToken));
+        _factoryContract.createCurve(initialReserve, address(reserveToken));
 
         assertEq(creatorBalanceBefore - reserveToken.balanceOf(address(this)), initialReserve);
 
-        address poolAddress = _factoryContract.getPool(address(reserveToken));
+        address poolAddress = _factoryContract.getCurve(address(reserveToken));
 
         assert(poolAddress != address(0));
-        assertEq(_factoryContract.poolLength(), 1);
-        assertEq(_factoryContract.pools(0), poolAddress);
+        assertEq(_factoryContract.allCurvesLength(), 1);
+        assertEq(_factoryContract.curves(0), poolAddress);
 
         assertEq(InverseBondingCurve(poolAddress).reserveTokenAddress(), address(reserveToken));
         assertEq(reserveToken.balanceOf(poolAddress), initialReserve);
 
-        InverseBondingCurveToken tokenContract =
-            InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
+        InverseBondingCurveToken tokenContract = InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
         assertEq(tokenContract.symbol(), "ibUSDC");
 
         CurveParameter memory param = InverseBondingCurve(poolAddress).curveParameters();
@@ -116,26 +112,25 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(param.lpSupply, 1e18);
     }
 
-    function testMultiplePools() public {
+    function testMultiplecurves() public {
         uint256 initialReserve = 2e18;
         uint256 creatorBalanceBefore = address(this).balance;
-        _factoryContract.createPool{value: initialReserve}(initialReserve, address(0));
+        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0));
 
-        address poolAddress = _factoryContract.getPool(address(0));
+        address poolAddress = _factoryContract.getCurve(address(0));
 
-        assertEq(_factoryContract.poolLength(), 1);
-        assertEq(_factoryContract.pools(0), poolAddress);
-        assertEq(_factoryContract.getPool(address(_weth)), poolAddress);
-
+        assertEq(_factoryContract.allCurvesLength(), 1);
+        assertEq(_factoryContract.curves(0), poolAddress);
+        assertEq(_factoryContract.getCurve(address(_weth)), poolAddress);
 
         ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
 
         reserveToken.mint(address(this), initialReserve * 2);
         reserveToken.approve(address(_factoryContract), initialReserve * 2);
-        _factoryContract.createPool(initialReserve, address(reserveToken));
-        assertEq(_factoryContract.poolLength(), 2);
+        _factoryContract.createCurve(initialReserve, address(reserveToken));
+        assertEq(_factoryContract.allCurvesLength(), 2);
 
-        poolAddress = _factoryContract.getPool(address(reserveToken));
-        assertEq(_factoryContract.pools(1), poolAddress);
+        poolAddress = _factoryContract.getCurve(address(reserveToken));
+        assertEq(_factoryContract.curves(1), poolAddress);
     }
 }

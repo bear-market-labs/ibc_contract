@@ -25,8 +25,5 @@ interface IInverseBondingCurveAdmin {
      * @return  stakingFee : The percent of fee reward to staker
      * @return  protocolFee : The percent of fee reward to protocol
      */
-    function feeConfig(ActionType actionType)
-        external
-        view
-        returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
+    function feeConfig(ActionType actionType) external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 }

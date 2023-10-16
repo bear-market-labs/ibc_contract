@@ -11,9 +11,8 @@ uint256 constant LP_FEE_PERCENT = 25e14;
 uint256 constant STAKE_FEE_PERCENT = 25e14;
 uint256 constant PROTOCOL_FEE_PERCENT = 5e15;
 uint256 constant MAX_FEE_PERCENT = 1e17;
-uint256 constant ALLOWED_INVARIANT_CHANGE = 1e10;
-uint256 constant ALLOWED_INVARIANT_CHANGE_PERCENT = 1e12; //0.000001
-uint256 constant ALLOWED_UTILIZATION_CHANGE_PERCENT = 1e12; //0.000001
+uint256 constant MAX_INVARIANT_CHANGE = 1e12; //Max allowed change percent: 0.000001 -> 0.0001%
+uint256 constant MAX_UTIL_CHANGE = 1e12; //Max allowed change percent: 0.000001 -> 0.0001%
 
 uint256 constant DAILY_BLOCK_COUNT = 7200;
 
@@ -30,3 +29,13 @@ uint256 constant UTILIZATION = 5e17; // 0.5
 uint256 constant UTILIZATION_RECIPROCAL = 2e18;
 
 address constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+
+//Value map to enum RewardType
+uint256 constant REWARD_LP = 0;
+uint256 constant REWARD_STAKE = 1;
+uint256 constant REWARD_PROTOCOL = 2;
+
+// Value map to enum FeeType
+uint256 constant FEE_IBC_FROM_TRADE = 0;
+uint256 constant FEE_IBC_FROM_LP = 1;
+uint256 constant FEE_RESERVE = 2;

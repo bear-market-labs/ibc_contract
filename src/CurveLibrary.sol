@@ -30,9 +30,9 @@ library CurveLibrary {
         FeeState[MAX_FEE_TYPE_COUNT] storage feeState,
         RewardType rewardType
     ) public {
-        _updateReward(account, userBalance, feeState[uint256(FeeType.RESERVE)], rewardType);
-        _updateReward(account, userBalance, feeState[uint256(FeeType.IBC_FROM_TRADE)], rewardType);
-        _updateReward(account, userBalance, feeState[uint256(FeeType.IBC_FROM_LP)], rewardType);
+        _updateReward(account, userBalance, feeState[FEE_RESERVE], rewardType);
+        _updateReward(account, userBalance, feeState[FEE_IBC_FROM_TRADE], rewardType);
+        _updateReward(account, userBalance, feeState[FEE_IBC_FROM_LP], rewardType);
     }
 
     /**
@@ -55,22 +55,14 @@ library CurveLibrary {
     )
         public
         view
-        returns (
-            uint256 inverseTokenForLp,
-            uint256 inverseTokenForStaking,
-            uint256 reserveForLp,
-            uint256 reserveForStaking
-        )
+        returns (uint256 inverseTokenForLp, uint256 inverseTokenForStaking, uint256 reserveForLp, uint256 reserveForStaking)
     {
-        inverseTokenForLp = _calcPendingReward(
-            recipient, feeState[uint256(FeeType.IBC_FROM_TRADE)], lpBalance, RewardType.LP
-        ) + _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_LP)], lpBalance, RewardType.LP);
-        inverseTokenForStaking = _calcPendingReward(
-            recipient, feeState[uint256(FeeType.IBC_FROM_TRADE)], stakingBalance, RewardType.STAKING
-        ) + _calcPendingReward(recipient, feeState[uint256(FeeType.IBC_FROM_LP)], stakingBalance, RewardType.STAKING);
-        reserveForLp = _calcPendingReward(recipient, feeState[uint256(FeeType.RESERVE)], lpBalance, RewardType.LP);
-        reserveForStaking =
-            _calcPendingReward(recipient, feeState[uint256(FeeType.RESERVE)], stakingBalance, RewardType.STAKING);
+        inverseTokenForLp = _calcPendingReward(recipient, feeState[FEE_IBC_FROM_TRADE], lpBalance, RewardType.LP)
+            + _calcPendingReward(recipient, feeState[FEE_IBC_FROM_LP], lpBalance, RewardType.LP);
+        inverseTokenForStaking = _calcPendingReward(recipient, feeState[FEE_IBC_FROM_TRADE], stakingBalance, RewardType.STAKING)
+            + _calcPendingReward(recipient, feeState[FEE_IBC_FROM_LP], stakingBalance, RewardType.STAKING);
+        reserveForLp = _calcPendingReward(recipient, feeState[FEE_RESERVE], lpBalance, RewardType.LP);
+        reserveForStaking = _calcPendingReward(recipient, feeState[FEE_RESERVE], stakingBalance, RewardType.STAKING);
     }
 
     /**
@@ -81,7 +73,7 @@ library CurveLibrary {
      * @param   allowedChangePercent : Allowed change percent
      * @return  bool : Is value changed
      */
-    function isValueChanged(uint256 value, uint256 newValue, uint256 allowedChangePercent) public pure returns (bool) {
+    function valueChanged(uint256 value, uint256 newValue, uint256 allowedChangePercent) public pure returns (bool) {
         uint256 diff = newValue > value ? newValue - value : value - newValue;
 
         return (diff.divDown(value) > allowedChangePercent);
@@ -93,8 +85,8 @@ library CurveLibrary {
      * @param   feeState : Fee state storage
      */
     function initializeRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState) public {
-        feeState[uint256(FeeType.IBC_FROM_TRADE)].emaRewardUpdateBlockNumber = block.number;
-        feeState[uint256(FeeType.RESERVE)].emaRewardUpdateBlockNumber = block.number;
+        feeState[FEE_IBC_FROM_TRADE].emaRewardUpdateBlockNumber = block.number;
+        feeState[FEE_RESERVE].emaRewardUpdateBlockNumber = block.number;
     }
 
     /**
@@ -108,10 +100,10 @@ library CurveLibrary {
             uint256 lpRewardEMA = _calcEMA(feeState, RewardType.LP, alpha);
             uint256 stakingRewardEMA = _calcEMA(feeState, RewardType.STAKING, alpha);
 
-            feeState.previousReward[uint256(RewardType.LP)] = feeState.totalReward[uint256(RewardType.LP)];
-            feeState.previousReward[uint256(RewardType.STAKING)] = feeState.totalReward[uint256(RewardType.STAKING)];
-            feeState.emaReward[uint256(RewardType.LP)] = lpRewardEMA;
-            feeState.emaReward[uint256(RewardType.STAKING)] = stakingRewardEMA;
+            feeState.previousReward[REWARD_LP] = feeState.totalReward[REWARD_LP];
+            feeState.previousReward[REWARD_STAKE] = feeState.totalReward[REWARD_STAKE];
+            feeState.emaReward[REWARD_LP] = lpRewardEMA;
+            feeState.emaReward[REWARD_STAKE] = stakingRewardEMA;
             feeState.emaRewardUpdateBlockNumber = block.number;
         }
     }
@@ -129,14 +121,14 @@ library CurveLibrary {
         view
         returns (uint256 inverseTokenReward, uint256 reserveReward)
     {
-        uint256 alpha = _calcParameterAlpha(feeState[uint256(FeeType.IBC_FROM_TRADE)]);
-        inverseTokenReward = _calcEMA(feeState[uint256(FeeType.IBC_FROM_TRADE)], rewardType, alpha);
+        uint256 alpha = _calcParameterAlpha(feeState[FEE_IBC_FROM_TRADE]);
+        inverseTokenReward = _calcEMA(feeState[FEE_IBC_FROM_TRADE], rewardType, alpha);
 
-        alpha = _calcParameterAlpha(feeState[uint256(FeeType.RESERVE)]);
-        reserveReward = _calcEMA(feeState[uint256(FeeType.RESERVE)], rewardType, alpha);
+        alpha = _calcParameterAlpha(feeState[FEE_RESERVE]);
+        reserveReward = _calcEMA(feeState[FEE_RESERVE], rewardType, alpha);
 
         // Parameter alpha is same with reserve reward
-        inverseTokenReward += _calcEMA(feeState[uint256(FeeType.IBC_FROM_LP)], rewardType, alpha);
+        inverseTokenReward += _calcEMA(feeState[FEE_IBC_FROM_LP], rewardType, alpha);
     }
 
     /**
@@ -147,13 +139,10 @@ library CurveLibrary {
      * @param   state : Fee state storage
      * @param   rewardType : LP or Staking
      */
-    function _updateReward(address account, uint256 userBalance, FeeState storage state, RewardType rewardType)
-        private
-    {
+    function _updateReward(address account, uint256 userBalance, FeeState storage state, RewardType rewardType) private {
         if (userBalance > 0) {
-            uint256 reward = (
-                state.globalFeeIndexes[uint256(rewardType)] - state.feeIndexStates[uint256(rewardType)][account]
-            ).mulDown(userBalance);
+            uint256 reward = (state.globalFeeIndexes[uint256(rewardType)] - state.feeIndexStates[uint256(rewardType)][account])
+                .mulDown(userBalance);
             state.pendingRewards[uint256(rewardType)][account] += reward;
             state.feeIndexStates[uint256(rewardType)][account] = state.globalFeeIndexes[uint256(rewardType)];
         } else {
@@ -177,8 +166,9 @@ library CurveLibrary {
     {
         uint256 reward = state.pendingRewards[uint256(rewardType)][account];
         if (userBalance > 0) {
-            reward += (state.globalFeeIndexes[uint256(rewardType)] - state.feeIndexStates[uint256(rewardType)][account])
-                .mulDown(userBalance);
+            reward += (state.globalFeeIndexes[uint256(rewardType)] - state.feeIndexStates[uint256(rewardType)][account]).mulDown(
+                userBalance
+            );
         }
         return reward;
     }
@@ -202,11 +192,7 @@ library CurveLibrary {
      * @param   alpha : Parameter alpha
      * @return  rewardEMA : Reward EMA
      */
-    function _calcEMA(FeeState storage feeState, RewardType rewardType, uint256 alpha)
-        private
-        view
-        returns (uint256 rewardEMA)
-    {
+    function _calcEMA(FeeState storage feeState, RewardType rewardType, uint256 alpha) private view returns (uint256 rewardEMA) {
         if (block.number > feeState.emaRewardUpdateBlockNumber) {
             uint256 pastBlockCount = block.number - feeState.emaRewardUpdateBlockNumber;
             uint256 previousEMA = feeState.emaReward[uint256(rewardType)];
@@ -240,7 +226,7 @@ library CurveLibrary {
             : vaule / (10 ** (fromDecimals - DEFAULT_DECIMALS));
     }
 
-    function isValueInRange(uint256 value, uint256[2] memory range) public pure returns (bool) {
+    function valueInRange(uint256 value, uint256[2] memory range) public pure returns (bool) {
         return value >= range[0] && (range[1] == 0 || value <= range[1]);
     }
 }

@@ -40,9 +40,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      */
     event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 
-    constructor(address wethAddress, address routerAddress, address protocolFeeOwner, bytes memory curveContractCode)
-        Ownable()
-    {
+    constructor(address wethAddress, address routerAddress, address protocolFeeOwner, bytes memory curveContractCode) Ownable() {
         _weth = wethAddress;
         _router = routerAddress;
         _protocolFeeOwner = protocolFeeOwner;
@@ -69,11 +67,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      * @return  stakingFee : The percent of fee reward to staker
      * @return  protocolFee : The percent of fee reward to protocol
      */
-    function feeConfig(ActionType actionType)
-        external
-        view
-        returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
-    {
+    function feeConfig(ActionType actionType) external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee) {
         lpFee = _lpFeePercent[uint256(actionType)];
         stakingFee = _stakingFeePercent[uint256(actionType)];
         protocolFee = _protocolFeePercent[uint256(actionType)];
@@ -87,10 +81,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      * @param   stakingFee : The percent of fee reward to staker
      * @param   protocolFee : The percent of fee reward to protocol
      */
-    function updateFeeConfig(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
-        external
-        onlyOwner
-    {
+    function updateFeeConfig(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee) external onlyOwner {
         if ((lpFee + stakingFee + protocolFee) >= MAX_FEE_PERCENT) revert FeePercentOutOfRange();
         if (uint256(actionType) >= MAX_ACTION_COUNT) revert InvalidInput();
 
@@ -116,7 +107,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
     /**
      * @notice  Update router contract address
-     * @dev     
+     * @dev
      * @param   routerAddress : Router contract address
      */
     function updateRouter(address routerAddress) public onlyOwner {
@@ -136,7 +127,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
     /**
      * @notice  Create curve factory
-     * @dev     
+     * @dev
      */
     function _createFactory() private {
         _factory = address(new InverseBondingCurveFactory(address(this)));
@@ -144,7 +135,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
     /**
      * @notice  Get factory contract address
-     * @dev     
+     * @dev
      * @return  address : Factory contract address
      */
     function factoryAddress() external view returns (address) {
@@ -162,7 +153,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
     /**
      * @notice  Wrap eth contract address
-     * @dev     
+     * @dev
      * @return  address : Wrap eth contract address
      */
     function weth() external view returns (address) {
@@ -171,7 +162,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
     /**
      * @notice  Query router contract address
-     * @dev     
+     * @dev
      * @return  address : router contract address
      */
     function router() external view returns (address) {
@@ -180,7 +171,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
 
     /**
      * @notice  Get curve implementation
-     * @dev     
+     * @dev
      * @return  address : curve implementation contract
      */
     function curveImplementation() external view returns (address) {

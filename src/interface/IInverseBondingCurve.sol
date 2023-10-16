@@ -41,11 +41,7 @@ interface IInverseBondingCurve {
      * @param   newParameterInvariant : New parameter invariant after LP added
      */
     event LiquidityAdded(
-        address indexed from,
-        address indexed recipient,
-        uint256 amountIn,
-        uint256 amountOut,
-        uint256 newParameterInvariant
+        address indexed from, address indexed recipient, uint256 amountIn, uint256 amountOut, uint256 newParameterInvariant
     );
 
     /**
@@ -113,9 +109,7 @@ interface IInverseBondingCurve {
      * @param   inverseTokenAmount : IBC token amount of reward
      * @param   reserveAmount : Reserve amount of reward
      */
-    event RewardClaimed(
-        address indexed from, address indexed recipient, uint256 inverseTokenAmount, uint256 reserveAmount
-    );
+    event RewardClaimed(address indexed from, address indexed recipient, uint256 inverseTokenAmount, uint256 reserveAmount);
 
     /**
      * @notice  Add reserve liquidity to inverse bonding curve
@@ -157,12 +151,8 @@ interface IInverseBondingCurve {
      * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
      * @param   reserveLimits : [minReserveLimit, maxReserveLimit], if maxReserveLimit = 0, then no limitation for max reserve
      */
-    function sellTokens(
-        address recipient,
-        uint256 inverseTokenIn,
-        uint256[2] memory priceLimits,
-        uint256[2] memory reserveLimits
-    ) external;
+    function sellTokens(address recipient, uint256 inverseTokenIn, uint256[2] memory priceLimits, uint256[2] memory reserveLimits)
+        external;
 
     /**
      * @notice  Stake IBC token to get fee reward
@@ -192,10 +182,7 @@ interface IInverseBondingCurve {
      * @return  lpTokenAmount : LP virtual token amount
      * @return  inverseTokenCredit : IBC token credited(Virtual, not able to sell/stake/transfer)
      */
-    function liquidityPositionOf(address account)
-        external
-        view
-        returns (uint256 lpTokenAmount, uint256 inverseTokenCredit);
+    function liquidityPositionOf(address account) external view returns (uint256 lpTokenAmount, uint256 inverseTokenCredit);
 
     /**
      * @notice  Query staking balance
@@ -249,12 +236,7 @@ interface IInverseBondingCurve {
     function rewardOf(address recipient)
         external
         view
-        returns (
-            uint256 inverseTokenForLp,
-            uint256 inverseTokenForStaking,
-            uint256 reserveForLp,
-            uint256 reserveForStaking
-        );
+        returns (uint256 inverseTokenForLp, uint256 inverseTokenForStaking, uint256 reserveForLp, uint256 reserveForStaking);
 
     /**
      * @notice  Query total staked IBC token amount
@@ -270,10 +252,7 @@ interface IInverseBondingCurve {
      * @return  inverseTokenReward : EMA IBC token reward per block
      * @return  reserveReward : EMA reserve reward per block
      */
-    function blockRewardEMA(RewardType rewardType)
-        external
-        view
-        returns (uint256 inverseTokenReward, uint256 reserveReward);
+    function blockRewardEMA(RewardType rewardType) external view returns (uint256 inverseTokenReward, uint256 reserveReward);
 
     /**
      * @notice  Query fee state

@@ -7,7 +7,6 @@ import "./Enums.sol";
 import "./Errors.sol";
 import "./interface/IWETH9.sol";
 import "./interface/IInverseBondingCurve.sol";
-import "forge-std/console2.sol";
 
 contract InverseBondingCurveRouter {
     using SafeERC20 for IERC20;
@@ -18,10 +17,7 @@ contract InverseBondingCurveRouter {
         _weth = IWETH9(wethAddress);
     }
 
-    function execute(address recipient, address pool, bool useNative, CommandType command, bytes memory data)
-        external
-        payable
-    {
+    function execute(address recipient, address pool, bool useNative, CommandType command, bytes memory data) external payable {
         IInverseBondingCurve curveContract = IInverseBondingCurve(pool);
         IERC20 reserveToken = IERC20(curveContract.reserveTokenAddress());
         IERC20 inverseToken = IERC20(curveContract.inverseTokenAddress());
@@ -68,8 +64,7 @@ contract InverseBondingCurveRouter {
         IERC20 inverseToken,
         bytes memory data
     ) private {
-        (uint256 reserveTokenAmount, uint256 inverseTokenAmount, bytes memory poolCallData) =
-            _getInputAndCallData(command, data);
+        (uint256 reserveTokenAmount, uint256 inverseTokenAmount, bytes memory poolCallData) = _getInputAndCallData(command, data);
 
         if (reserveTokenAmount > 0) {
             if (!useNative) {
@@ -95,41 +90,25 @@ contract InverseBondingCurveRouter {
             (address recipient, uint256 reserveIn, uint256[2] memory priceLimits) =
                 abi.decode(data, (address, uint256, uint256[2]));
             reserveTokenAmount = reserveIn;
-            poolCallData =
-                abi.encodeWithSignature("addLiquidity(address,uint256,uint256[2])", recipient, reserveIn, priceLimits);
+            poolCallData = abi.encodeWithSignature("addLiquidity(address,uint256,uint256[2])", recipient, reserveIn, priceLimits);
         } else if (command == CommandType.REMOVE_LIQUIDITY) {
             (, uint256 inverseTokenIn, uint256[2] memory priceLimits) = abi.decode(data, (address, uint256, uint256[2]));
             inverseTokenAmount = inverseTokenIn;
-            poolCallData = abi.encodeWithSignature(
-                "removeLiquidity(address,uint256,uint256[2])", msg.sender, inverseTokenIn, priceLimits
-            );
+            poolCallData =
+                abi.encodeWithSignature("removeLiquidity(address,uint256,uint256[2])", msg.sender, inverseTokenIn, priceLimits);
         } else if (command == CommandType.BUY_TOKEN) {
-            (
-                ,
-                uint256 reserveIn,
-                uint256 exactAmountOut,
-                uint256[2] memory priceLimits,
-                uint256[2] memory reserveLimits
-            ) = abi.decode(data, (address, uint256, uint256, uint256[2], uint256[2]));
+            (, uint256 reserveIn, uint256 exactAmountOut, uint256[2] memory priceLimits, uint256[2] memory reserveLimits) =
+                abi.decode(data, (address, uint256, uint256, uint256[2], uint256[2]));
             reserveTokenAmount = reserveIn;
             poolCallData = abi.encodeWithSignature(
                 "buyTokens(address,uint256,uint256,uint256[2],uint256[2])",
-                msg.sender,
-                reserveIn,
-                exactAmountOut,
-                priceLimits,
-                reserveLimits
-            );
+                msg.sender, reserveIn, exactAmountOut, priceLimits, reserveLimits);
         } else if (command == CommandType.SELL_TOKEN) {
             (, uint256 inverseTokenIn, uint256[2] memory priceLimits, uint256[2] memory reserveLimits) =
                 abi.decode(data, (address, uint256, uint256[2], uint256[2]));
             inverseTokenAmount = inverseTokenIn;
             poolCallData = abi.encodeWithSignature(
-                "sellTokens(address,uint256,uint256[2],uint256[2])",
-                msg.sender,
-                inverseTokenIn,
-                priceLimits,
-                reserveLimits
+                "sellTokens(address,uint256,uint256[2],uint256[2])", msg.sender, inverseTokenIn, priceLimits, reserveLimits
             );
         } else if (command == CommandType.CLAIM_REWARD) {
             poolCallData = abi.encodeWithSignature("claimReward(address)", msg.sender);

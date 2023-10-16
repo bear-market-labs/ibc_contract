@@ -9,50 +9,50 @@ import "./interface/IWETH9.sol";
 import "./Errors.sol";
 
 contract InverseBondingCurveFactory {
-    event PoolCreated(address cruve, address token, address pool, uint256 reserve);
+    event CurveCreated(address curveContract, address tokenContract, address proxyContract, uint256 iniitalReserve);
 
     IInverseBondingCurveAdmin private _admin;
 
-    mapping(address => address) private _poolMap;
-    address[] public pools;
+    mapping(address => address) private _curveMap;
+    address[] public curves;
 
     constructor(address adminContract) {
         _admin = IInverseBondingCurveAdmin(adminContract);
     }
 
     /**
-     * @notice  Create inverse bonding curve
-     * @dev     
-     * @param   reserve : Initial reserve token amount 
-     * @param   reserveTokenAddress : Reverse token address
+     * @notice  Deploys IBC proxy contract, and the relevant ibAsset token contract for the specified reserve asset.
+     * @dev
+     * @param   initialReserves : Amount of initial reserves to supply to curve
+     * @param   reserveTokenAddress : Contract address of the reserve asset token contract
      */
-    function createPool(uint256 reserve, address reserveTokenAddress) external payable {
+    function createCurve(uint256 initialReserves, address reserveTokenAddress) external payable {
         string memory tokenSymbol = "";
         uint256 leftReserve = msg.value;
         address reserveFromAccount = msg.sender;
         if (reserveTokenAddress == address(0) && msg.value > 0) {
-            if (msg.value < reserve) {
+            if (msg.value < initialReserves) {
                 revert InsufficientBalance();
             }
             // Ignore reserve parameter passed in, use all msg.value as reserve
-            reserve = msg.value;
+            initialReserves = msg.value;
             leftReserve = 0;
 
             // convert eth to weth
             reserveTokenAddress = _admin.weth();
             IWETH9(reserveTokenAddress).deposit{value: msg.value}();
-            IWETH9(reserveTokenAddress).approve(address(this), reserve);
+            IWETH9(reserveTokenAddress).approve(address(this), initialReserves);
             tokenSymbol = "ibETH";
             reserveFromAccount = address(this);
         } else {
             tokenSymbol = string(abi.encodePacked("ib", IERC20Metadata(reserveTokenAddress).symbol()));
         }
 
-        if (_poolMap[reserveTokenAddress] != address(0)) {
+        if (_curveMap[reserveTokenAddress] != address(0)) {
             revert PoolAlreadyExist();
         }
 
-        _createPool(reserve, tokenSymbol, reserveFromAccount, reserveTokenAddress);
+        _createCurve(initialReserves, tokenSymbol, reserveFromAccount, reserveTokenAddress);
 
         if (leftReserve > 0) {
             (bool sent,) = msg.sender.call{value: leftReserve}("");
@@ -62,8 +62,16 @@ contract InverseBondingCurveFactory {
         }
     }
 
-    function _createPool(
-        uint256 reserve,
+    /**
+     * @notice  Deploys IBC proxy contract, and the relevant ibAsset token contract for the specified reserve asset.
+     * @dev
+     * @param   initialReserves : Amount of initial reserves to supply to curve
+     * @param   inverseTokenSymbol : IBC token symbol
+     * @param   reserveFromAccount : The account to transfer reserve token from
+     * @param   reserveTokenAddress : Contract address of the reserve asset token contract
+     */
+    function _createCurve(
+        uint256 initialReserves,
         string memory inverseTokenSymbol,
         address reserveFromAccount,
         address reserveTokenAddress
@@ -74,16 +82,11 @@ contract InverseBondingCurveFactory {
             new InverseBondingCurveToken(address(this), inverseTokenSymbol, inverseTokenSymbol);
 
         address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _cruveContract, ""));
-        IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), reserve);
+        IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), initialReserves);
 
         bytes memory data = abi.encodeWithSignature(
             "initialize(address,address,address,address,uint256)",
-            _admin,
-            _admin.router(),
-            tokenContract,
-            reserveTokenAddress,
-            reserve
-        );
+            _admin, _admin.router(), tokenContract, reserveTokenAddress, initialReserves);
 
         (bool success,) = proxyContract.call(data);
         require(success, "Curve contract initialize failed");
@@ -92,25 +95,32 @@ contract InverseBondingCurveFactory {
         (success,) = address(tokenContract).call(abi.encodeWithSignature("transferOwnership(address)", proxyContract));
         require(success, "Token contract owner transfer failed");
 
-        (success,) = proxyContract.call(abi.encodeWithSignature("transferOwnership(address)", _admin.owner()));
-        require(success, "Token contract owner transfer failed");
+        _curveMap[reserveTokenAddress] = proxyContract;
+        curves.push(proxyContract);
 
-        _poolMap[reserveTokenAddress] = proxyContract;
-        pools.push(proxyContract);
-
-        emit PoolCreated(_cruveContract, address(tokenContract), proxyContract, reserve);
+        emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, initialReserves);
     }
 
-    function getPool(address reserveToken) public view returns (address) {
+    /**
+     * @notice  Query the IBC implementation of specific reverse token
+     * @dev     .
+     * @param   reserveToken : Reserve token of curve
+     * @return  address : Contract address of the specified reserve asset's IBC implemenation
+     */
+    function getCurve(address reserveToken) public view returns (address) {
         if (reserveToken == address(0)) {
-            // create ETH pool
             reserveToken = _admin.weth();
         }
 
-        return _poolMap[reserveToken];
+        return _curveMap[reserveToken];
     }
 
-    function poolLength() public view returns (uint256) {
-        return pools.length;
+    /**
+     * @notice  Query total curves count
+     * @dev
+     * @return  uint256 : Total number of IBC curves created by Factory
+     */
+    function allCurvesLength() public view returns (uint256) {
+        return curves.length;
     }
 }
