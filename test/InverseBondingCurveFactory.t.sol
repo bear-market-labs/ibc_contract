@@ -23,7 +23,8 @@ contract InverseBondingCurveFactoryTest is Test {
 
     function setUp() public {
         _weth = new WethToken();
-        _adminContract = new InverseBondingCurveAdmin(address(_weth), owner, feeOwner, type(InverseBondingCurve).creationCode);
+        _adminContract =
+            new InverseBondingCurveAdmin(address(_weth), owner, feeOwner, type(InverseBondingCurve).creationCode);
 
         _factoryContract = InverseBondingCurveFactory(_adminContract.factoryAddress());
     }
@@ -45,7 +46,8 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(InverseBondingCurve(poolAddress).reserveTokenAddress(), address(_weth));
         assertEq(_weth.balanceOf(poolAddress), initialReserve);
 
-        InverseBondingCurveToken tokenContract = InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
+        InverseBondingCurveToken tokenContract =
+            InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
         assertEq(tokenContract.symbol(), "ibETH");
 
         CurveParameter memory param = InverseBondingCurve(poolAddress).curveParameters();
@@ -62,7 +64,7 @@ contract InverseBondingCurveFactoryTest is Test {
 
         reserveToken.mint(address(this), initialReserve);
         reserveToken.approve(address(_factoryContract), initialReserve);
-        
+
         uint256 creatorBalanceBefore = reserveToken.balanceOf(address(this));
         _factoryContract.createPool(initialReserve, address(reserveToken));
 
@@ -77,7 +79,8 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(InverseBondingCurve(poolAddress).reserveTokenAddress(), address(reserveToken));
         assertEq(reserveToken.balanceOf(poolAddress), initialReserve);
 
-        InverseBondingCurveToken tokenContract = InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
+        InverseBondingCurveToken tokenContract =
+            InverseBondingCurveToken(InverseBondingCurve(poolAddress).inverseTokenAddress());
         assertEq(tokenContract.symbol(), "ibUSDC");
 
         CurveParameter memory param = InverseBondingCurve(poolAddress).curveParameters();
@@ -85,5 +88,5 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(param.supply, 1e18);
         assertEq(param.price, 1e18);
         assertEq(param.lpSupply, 1e18);
-    }    
+    }
 }

@@ -121,37 +121,48 @@ interface IInverseBondingCurve {
      * @notice  Add reserve liquidity to inverse bonding curve
      * @dev     LP will get virtual LP token(non-transferable), and one account can only hold one LP position(Need to close and reopen if user want to change)
      * @param   recipient : Account to receive LP token
-     * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
+     * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
      */
-    function addLiquidity(address recipient, uint256 reserveIn, uint256 minPriceLimit) external;
+    function addLiquidity(address recipient, uint256 reserveIn, uint256[2] memory priceLimits) external;
 
     /**
      * @notice  Remove reserve liquidity from inverse bonding curve
      * @dev     IBC token may needed to burn LP
      * @param   recipient : Account to receive reserve
-     * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
+     * @param   priceLimits :[minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
      */
-    function removeLiquidity(address recipient, uint256 inverseTokenIn, uint256 maxPriceLimit) external;
+    function removeLiquidity(address recipient, uint256 inverseTokenIn, uint256[2] memory priceLimits) external;
 
     /**
      * @notice  Buy IBC token with reserve
      * @dev     If exactAmountOut greater than zero, then it will mint exact token to recipient
      * @param   recipient : Account to receive IBC token
      * @param   exactAmountOut : Exact amount IBC token to mint to user
-     * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
+     * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
+     * @param   reserveLimits : [minReserveLimit, maxReserveLimit], if maxReserveLimit = 0, then no limitation for max reserve
      */
-    function buyTokens(address recipient, uint256 reserveIn, uint256 exactAmountOut, uint256 maxPriceLimit)
-        external
-        payable;
+    function buyTokens(
+        address recipient,
+        uint256 reserveIn,
+        uint256 exactAmountOut,
+        uint256[2] memory priceLimits,
+        uint256[2] memory reserveLimits
+    ) external payable;
 
     /**
      * @notice  Sell IBC token to get reserve back
      * @dev
      * @param   recipient : Account to receive reserve
      * @param   inverseTokenIn : IBC token amount to sell
-     * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
+     * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
+     * @param   reserveLimits : [minReserveLimit, maxReserveLimit], if maxReserveLimit = 0, then no limitation for max reserve
      */
-    function sellTokens(address recipient, uint256 inverseTokenIn, uint256 minPriceLimit) external;
+    function sellTokens(
+        address recipient,
+        uint256 inverseTokenIn,
+        uint256[2] memory priceLimits,
+        uint256[2] memory reserveLimits
+    ) external;
 
     /**
      * @notice  Stake IBC token to get fee reward
@@ -200,7 +211,6 @@ interface IInverseBondingCurve {
      * @return  address : IBC token contract address
      */
     function inverseTokenAddress() external view returns (address);
-
 
     function reserveTokenAddress() external view returns (address);
 

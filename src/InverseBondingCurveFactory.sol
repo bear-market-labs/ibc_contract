@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.18;
 
-import "openzeppelin/access/Ownable.sol";
-import "openzeppelin/utils/Create2.sol";
-
 import "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./InverseBondingCurveProxy.sol";
@@ -65,11 +62,10 @@ contract InverseBondingCurveFactory {
         address reserveFromAccount,
         address reserveTokenAddress
     ) private {
-        bytes32 salt = bytes32(uint256(uint160(msg.sender)) + block.number);
         address _cruveContract = _admin.curveImplementation();
 
-
-        InverseBondingCurveToken tokenContract = new InverseBondingCurveToken(address(this), inverseTokenSymbol, inverseTokenSymbol);
+        InverseBondingCurveToken tokenContract =
+            new InverseBondingCurveToken(address(this), inverseTokenSymbol, inverseTokenSymbol);
 
         address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _cruveContract, ""));
         IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), reserve);
@@ -108,7 +104,7 @@ contract InverseBondingCurveFactory {
         return _poolMap[reserveToken];
     }
 
-    function poolLength() public view returns(uint256){
+    function poolLength() public view returns (uint256) {
         return pools.length;
     }
 }

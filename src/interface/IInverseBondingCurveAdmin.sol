@@ -15,7 +15,7 @@ interface IInverseBondingCurveAdmin {
 
     function curveImplementation() external view returns (address);
 
-    function owner() external view returns(address);
+    function owner() external view returns (address);
     function router() external view returns (address);
 
     /**

@@ -236,7 +236,11 @@ library CurveLibrary {
         if (fromDecimals == DEFAULT_DECIMALS) return vaule;
 
         return fromDecimals < DEFAULT_DECIMALS
-            ?  vaule * (10 ** (DEFAULT_DECIMALS - fromDecimals))
+            ? vaule * (10 ** (DEFAULT_DECIMALS - fromDecimals))
             : vaule / (10 ** (fromDecimals - DEFAULT_DECIMALS));
+    }
+
+    function isValueInRange(uint256 value, uint256[2] memory range) public pure returns (bool) {
+        return value >= range[0] && (range[1] == 0 || value <= range[1]);
     }
 }

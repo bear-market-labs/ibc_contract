@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import "openzeppelin/access/Ownable.sol";
 import "openzeppelin/security/Pausable.sol";
-
+import "openzeppelin/utils/Create2.sol";
 import "./Constants.sol";
 import "./Enums.sol";
 
@@ -40,12 +40,9 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      */
     event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 
-    constructor(
-        address wethAddress,
-        address routerAddress,
-        address protocolFeeOwner,
-        bytes memory curveContractCode
-    ) Ownable() {
+    constructor(address wethAddress, address routerAddress, address protocolFeeOwner, bytes memory curveContractCode)
+        Ownable()
+    {
         _weth = wethAddress;
         _router = routerAddress;
         _protocolFeeOwner = protocolFeeOwner;

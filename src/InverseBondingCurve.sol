@@ -109,7 +109,6 @@ contract InverseBondingCurve is
         require(_adminContract.paused(), "Pausable: paused");
         _;
     }
-    
 
     // /**
     //  * @notice  Initialize contract
@@ -138,7 +137,7 @@ contract InverseBondingCurve is
         uint256 reserve
     ) external initializer {
         if (reserve == 0) revert ParameterZeroNotAllowed();
-        
+
         if (inverseTokenContractAddress == address(0)) revert EmptyAddress();
 
         // __Pausable_init();
@@ -162,7 +161,6 @@ contract InverseBondingCurve is
         uint256 price = UINT_TWO.divDown(_curveReserveBalance);
         uint256 supply = _curveReserveBalance.mulDown(_curveReserveBalance).divDown(UINT_FOUR);
 
-        
         uint256 lpTokenAmount = price.mulDown(_curveReserveBalance - (price.mulDown(supply)));
 
         uint256 tokenToDead = supply.mulDown(INITIAL_RESERVE_DEDUCTION).divDown(_curveReserveBalance);
@@ -189,14 +187,16 @@ contract InverseBondingCurve is
      * @dev     LP will get virtual LP token(non-transferable),
      *          and one account can only hold one LP position(Need to close and reopen if user want to change)
      * @param   recipient : Account to receive LP token
-     * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
+     * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
      */
-    function addLiquidity(address recipient, uint256 reserveIn, uint256 minPriceLimit) external whenNotPaused {
+    function addLiquidity(address recipient, uint256 reserveIn, uint256[2] memory priceLimits) external whenNotPaused {
         address sourceAccount = _getSourceAccount(recipient);
         if (_lpBalanceOf(recipient) > 0) revert LpAlreadyExist();
-        
+
         if (recipient == address(0)) revert EmptyAddress();
-        if (_currentPrice() < minPriceLimit) revert PriceOutOfLimit(_currentPrice(), minPriceLimit);
+        if (!CurveLibrary.isValueInRange(_currentPrice(), priceLimits)) {
+            revert PriceOutOfLimit(_currentPrice(), priceLimits);
+        }
 
         _checkPayment(_reserveToken, CurveLibrary.scaleTo(_reserveBalance, _reserveTokenDecimal), reserveIn);
         reserveIn = CurveLibrary.scaleFrom(reserveIn, _reserveTokenDecimal);
@@ -220,22 +220,16 @@ contract InverseBondingCurve is
         emit LiquidityAdded(sourceAccount, recipient, reserveIn, mintToken, _parameterInvariant);
     }
 
-    function _getSourceAccount(address recipient) private view returns (address) {
-        return msg.sender != _router ? msg.sender : recipient;
-    }
-
-    function _getTargetAccount(address recipient) private view returns (address) {
-        // Reserve token will be sent to router firstly to unwrap to native token
-        return msg.sender == _router ? msg.sender : recipient;
-    }
-
     /**
      * @notice  Remove reserve liquidity from inverse bonding curve
      * @dev     IBC token may needed to burn LP
      * @param   recipient : Account to receive reserve
-     * @param   maxPriceLimit : Maximum price limit, revert if current price greater than the limit
+     * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
      */
-    function removeLiquidity(address recipient, uint256 inverseTokenIn, uint256 maxPriceLimit) external whenNotPaused {
+    function removeLiquidity(address recipient, uint256 inverseTokenIn, uint256[2] memory priceLimits)
+        external
+        whenNotPaused
+    {
         address sourceAccount = _getSourceAccount(recipient);
         address targetAccount = _getTargetAccount(recipient);
         uint256 burnTokenAmount = _lpBalanceOf(sourceAccount);
@@ -245,7 +239,9 @@ contract InverseBondingCurve is
 
         if (burnTokenAmount == 0) revert LpNotExist();
         if (recipient == address(0)) revert EmptyAddress();
-        if (_currentPrice() > maxPriceLimit) revert PriceOutOfLimit(_currentPrice(), maxPriceLimit);
+        if (!CurveLibrary.isValueInRange(_currentPrice(), priceLimits)) {
+            revert PriceOutOfLimit(_currentPrice(), priceLimits);
+        }
 
         _updateLpReward(sourceAccount);
         uint256 inverseTokenCredit = _lpPositions[sourceAccount].inverseTokenCredit;
@@ -306,20 +302,25 @@ contract InverseBondingCurve is
      * @param   recipient  .
      * @param   reserveIn  .
      * @param   exactAmountOut  .
-     * @param   maxPriceLimit  .
+     * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
+     * @param   reserveLimits : [minReserveLimit, maxReserveLimit], if maxReserveLimit = 0, then no limitation for max reserve
      */
-    function buyTokens(address recipient, uint256 reserveIn, uint256 exactAmountOut, uint256 maxPriceLimit)
-        external
-        payable
-        whenNotPaused
-    {
-        if (recipient == address(0)) revert EmptyAddress();        
+    function buyTokens(
+        address recipient,
+        uint256 reserveIn,
+        uint256 exactAmountOut,
+        uint256[2] memory priceLimits,
+        uint256[2] memory reserveLimits
+    ) external payable whenNotPaused {
+        if (recipient == address(0)) revert EmptyAddress();
+        if (!CurveLibrary.isValueInRange(_reserveBalance, reserveLimits)) {
+            revert ReserveOutOfLimit(_reserveBalance, reserveLimits);
+        }
         if (exactAmountOut > 0 && exactAmountOut < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(exactAmountOut);
         _checkPayment(_reserveToken, CurveLibrary.scaleTo(_reserveBalance, _reserveTokenDecimal), reserveIn);
         reserveIn = CurveLibrary.scaleFrom(reserveIn, _reserveTokenDecimal);
         if (reserveIn < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(reserveIn);
         _reserveBalance += reserveIn;
-        
 
         address sourceAccount = _getSourceAccount(recipient);
         address targetAccount = _getTargetAccount(recipient);
@@ -332,8 +333,8 @@ contract InverseBondingCurve is
 
         _increaseReserve(reserve);
 
-        if (reserve.divDown(tokenToUser) > maxPriceLimit) {
-            revert PriceOutOfLimit(reserve.divDown(tokenToUser), maxPriceLimit);
+        if (!CurveLibrary.isValueInRange(reserve.divDown(tokenToUser), priceLimits)) {
+            revert PriceOutOfLimit(reserve.divDown(tokenToUser), priceLimits);
         }
 
         _checkInvariantNotChanged(_virtualInverseTokenTotalSupply() + totalMint);
@@ -356,16 +357,25 @@ contract InverseBondingCurve is
      * @dev
      * @param   recipient : Account to receive reserve
      * @param   inverseTokenIn : IBC token amount to sell
-     * @param   minPriceLimit : Minimum price limit, revert if current price less than the limit
+     * @param   priceLimits : [minPriceLimit, maxPriceLimit], if maxPriceLimit = 0, then no limitation for max price
+     * @param   reserveLimits : [minReserveLimit, maxReserveLimit], if maxReserveLimit = 0, then no limitation for max reserve
      */
-    function sellTokens(address recipient, uint256 inverseTokenIn, uint256 minPriceLimit) external whenNotPaused {
+    function sellTokens(
+        address recipient,
+        uint256 inverseTokenIn,
+        uint256[2] memory priceLimits,
+        uint256[2] memory reserveLimits
+    ) external whenNotPaused {
         // if (_inverseToken.balanceOf(msg.sender) < amount) revert InsufficientBalance();
         if (inverseTokenIn < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(inverseTokenIn);
+        if (!CurveLibrary.isValueInRange(_reserveBalance, reserveLimits)) {
+            revert ReserveOutOfLimit(_reserveBalance, reserveLimits);
+        }
         if (recipient == address(0)) revert EmptyAddress();
         address sourceAccount = _getSourceAccount(recipient);
         address targetAccount = _getTargetAccount(recipient);
 
-        _checkPayment(_inverseToken, _inverseTokenBalance, inverseTokenIn); 
+        _checkPayment(_inverseToken, _inverseTokenBalance, inverseTokenIn);
         _inverseTokenBalance += inverseTokenIn;
 
         uint256 fee =
@@ -375,8 +385,8 @@ contract InverseBondingCurve is
         uint256 returnLiquidity = _calcBurnToken(burnToken);
         _decreaseReserve(returnLiquidity);
 
-        if (returnLiquidity.divDown(burnToken) < minPriceLimit) {
-            revert PriceOutOfLimit(returnLiquidity.divDown(burnToken), minPriceLimit);
+        if (!CurveLibrary.isValueInRange(returnLiquidity.divDown(burnToken), priceLimits)) {
+            revert PriceOutOfLimit(returnLiquidity.divDown(burnToken), priceLimits);
         }
 
         _checkInvariantNotChanged(_virtualInverseTokenTotalSupply() - burnToken);
@@ -431,7 +441,6 @@ contract InverseBondingCurve is
 
         emit TokenUnstaked(sourceAccount, amount);
         _transferInverseToken(sourceAccount, amount);
-        // IERC20(_inverseToken).safeTransfer(msg.sender, amount);
     }
 
     /**
@@ -490,7 +499,6 @@ contract InverseBondingCurve is
         }
 
         _transferInverseToken(msg.sender, inverseTokenReward);
-
         _transferReserveToken(msg.sender, reserveReward);
     }
 
@@ -534,19 +542,8 @@ contract InverseBondingCurve is
      */
     function curveParameters() external view returns (CurveParameter memory parameters) {
         uint256 supply = _virtualInverseTokenTotalSupply();
-        return CurveParameter(
-            _curveReserveBalance, supply, _totalLpSupply, _currentPrice(), _parameterInvariant
-        );
+        return CurveParameter(_curveReserveBalance, supply, _totalLpSupply, _currentPrice(), _parameterInvariant);
     }
-
-    // /**
-    //  * @notice  Query protocol fee owner
-    //  * @dev
-    //  * @return  address : protocol fee owner
-    //  */
-    // function feeOwner() external view returns (address) {
-    //     return _protocolFeeOwner;
-    // }
 
     /**
      * @notice  Query reward of account
@@ -677,10 +674,6 @@ contract InverseBondingCurve is
      */
     function _transferReserveToken(address recipient, uint256 amount) private {
         if (amount > 0) {
-            // (bool sent,) = recipient.call{value: amount}("");
-            // if (!sent) {
-            //     revert FailToSend(recipient);
-            // }
             _reserveBalance -= amount;
             _reserveToken.safeTransfer(recipient, CurveLibrary.scaleTo(amount, _reserveTokenDecimal));
         }
@@ -695,10 +688,9 @@ contract InverseBondingCurve is
         _parameterInvariant = _curveReserveBalance.divDown(newSupply.powDown(UTILIZATION));
     }
 
-
     /**
      * @notice  Mint inverse token to recipient
-     * @dev     
+     * @dev
      * @param   recipient : Accmount to receive token
      * @param   amount : Token amount
      */
@@ -711,7 +703,7 @@ contract InverseBondingCurve is
 
     /**
      * @notice  Burn inverse token
-     * @dev     
+     * @dev
      * @param   amount : Amount to burn
      */
     function _burnInverseToken(uint256 amount) private {
@@ -721,15 +713,17 @@ contract InverseBondingCurve is
 
     /**
      * @notice  Transfer inverse token to recipient
-     * @dev     
+     * @dev
      * @param   recipient : Recipient account to receive token
      * @param   amount : Token amount to transfer
      */
     function _transferInverseToken(address recipient, uint256 amount) private {
-        _inverseToken.safeTransfer(recipient, amount);
-        _inverseTokenBalance -= amount;
+        if (amount > 0) {
+            _inverseToken.safeTransfer(recipient, amount);
+            _inverseTokenBalance -= amount;
+        }
     }
-    
+
     /**
      * @notice  Returns the LP token amount owned by `account`
      * @dev
@@ -746,11 +740,7 @@ contract InverseBondingCurve is
     function _checkUtilizationNotChanged() private view {
         uint256 newParameterUtilization =
             _currentPrice().mulDown(_virtualInverseTokenTotalSupply()).divDown(_curveReserveBalance);
-        if (
-            CurveLibrary.isValueChanged(
-                UTILIZATION, newParameterUtilization, ALLOWED_UTILIZATION_CHANGE_PERCENT
-            )
-        ) {
+        if (CurveLibrary.isValueChanged(UTILIZATION, newParameterUtilization, ALLOWED_UTILIZATION_CHANGE_PERCENT)) {
             revert UtilizationChanged(newParameterUtilization);
         }
     }
@@ -769,6 +759,15 @@ contract InverseBondingCurve is
 
     function _checkPayment(IERC20 token, uint256 previousAmount, uint256 inputAmount) private view {
         if (token.balanceOf(address(this)) - previousAmount < inputAmount) revert InsufficientBalance();
+    }
+
+    function _getSourceAccount(address recipient) private view returns (address) {
+        return msg.sender != _router ? msg.sender : recipient;
+    }
+
+    function _getTargetAccount(address recipient) private view returns (address) {
+        // Reserve token will be sent to router firstly to unwrap to native token
+        return msg.sender == _router ? msg.sender : recipient;
     }
 
     /**
@@ -896,7 +895,7 @@ contract InverseBondingCurve is
             protocolFee = amount.mulDown(protocolFeePercent);
         }
     }
-     
+
     /**
      * @notice  Calculate token need to mint, fee based on input reserve
      * @dev     .
@@ -979,8 +978,8 @@ contract InverseBondingCurve is
     function _calcMintToken(uint256 amount) private view returns (uint256) {
         uint256 newBalance = _curveReserveBalance + amount;
         uint256 currentSupply = _virtualInverseTokenTotalSupply();
-        uint256 newSupply = newBalance.divDown(_curveReserveBalance).powDown(UTILIZATION_RECIPROCAL)
-            .mulDown(currentSupply);
+        uint256 newSupply =
+            newBalance.divDown(_curveReserveBalance).powDown(UTILIZATION_RECIPROCAL).mulDown(currentSupply);
 
         return newSupply > currentSupply ? newSupply - currentSupply : 0;
     }

@@ -6,8 +6,7 @@ import "openzeppelin/token/ERC20/ERC20.sol";
 import "forge-std/console2.sol";
 
 contract WethToken is ERC20 {
-    constructor() ERC20("WETH", "WETH") {
-    }
+    constructor() ERC20("WETH", "WETH") {}
 
     function decimals() public pure override returns (uint8) {
         return 18;
@@ -31,8 +30,6 @@ contract WethToken is ERC20 {
         require(sent, "Fail to send Ether");
     }
 }
-
-
 
 contract ReserveToken is ERC20 {
     uint8 private _decimals;

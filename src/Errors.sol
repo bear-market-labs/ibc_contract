@@ -3,8 +3,8 @@ pragma solidity ^0.8.18;
 
 error InputAmountTooSmall(uint256 amount);
 error ParameterZeroNotAllowed();
-error PriceOutOfLimit(uint256 price, uint256 priceLimit);
-error ReserveOutOfLimit(uint256 reserve, uint256 reserveLimit);
+error PriceOutOfLimit(uint256 price, uint256[2] priceLimit);
+error ReserveOutOfLimit(uint256 reserve, uint256[2] reserveLimit);
 error UtilizationInvalid(uint256 parameterUtilization);
 error InsufficientBalance();
 error EmptyAddress();
