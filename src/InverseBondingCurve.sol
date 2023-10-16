@@ -62,7 +62,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     }
 
     modifier onlyProtocolFeeOwner() {
-        if (msg.sender == _adminContract.feeOwner()) {
+        if (msg.sender != _adminContract.feeOwner()) {
             revert Unauthorized();
         }
         _;
@@ -400,7 +400,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
      * @notice  Claim protocol fee reward
      * @dev     Only protocol fee owner allowed
      */
-    function claimProtocolReward() external whenNotPaused onlyProtocolFeeOwner {
+    function claimProtocolReward() external whenNotPaused onlyProtocolFeeOwner {        
         uint256 inverseTokenReward = _feeStates[FEE_IBC_FROM_TRADE].totalPendingReward[REWARD_PROTOCOL]
             + _feeStates[FEE_IBC_FROM_LP].totalPendingReward[REWARD_PROTOCOL]
             + (_inverseToken.balanceOf(address(this)) - _inverseTokenBalance); // Additional token send to contract
@@ -415,10 +415,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         _feeStates[FEE_RESERVE].totalPendingReward[REWARD_PROTOCOL] = 0;
 
         emit RewardClaimed(msg.sender, msg.sender, inverseTokenReward, reserveReward);
-
-        if (inverseTokenReward > 0) {
-            IERC20(_inverseToken).safeTransfer(msg.sender, inverseTokenReward);
-        }
 
         _transferInverseToken(msg.sender, inverseTokenReward);
         _transferReserveToken(msg.sender, reserveReward);
