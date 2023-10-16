@@ -25,7 +25,7 @@ contract InverseBondingCurveRouter {
         if (msg.value > 0) {
             if (useNative && address(reserveToken) == address(_weth)) {
                 _weth.deposit{value: msg.value}();
-                _weth.transfer(pool, msg.value);
+                IERC20(_weth).safeTransfer(pool, msg.value);
             } else {
                 revert EtherNotAccept();
             }
