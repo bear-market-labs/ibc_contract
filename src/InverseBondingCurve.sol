@@ -106,6 +106,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         address router,
         address inverseTokenContract,
         address reserveTokenContract,
+        address recipient,
         uint256 reserve
     ) external initializer {
         if (
@@ -140,7 +141,8 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
 
         address protocolFeeOwner = _adminContract.feeOwner();
         _updateLpReward(protocolFeeOwner);
-        _createLpPosition(lpTokenAmount - lpToDead, supply - tokenToDead, protocolFeeOwner);
+        _updateLpReward(recipient);
+        _createLpPosition(lpTokenAmount - lpToDead, supply - tokenToDead, recipient);
         // Burn some liquidity to dead address to avoid empty pool
         _createLpPosition(lpToDead, tokenToDead, DEAD_ADDRESS);
 
