@@ -2,7 +2,6 @@
 pragma solidity ^0.8.18;
 
 import "forge-std/Test.sol";
-import "../src/deploy/Deployer.sol";
 import "../src/InverseBondingCurve.sol";
 import "../src/InverseBondingCurveProxy.sol";
 import "../src/InverseBondingCurveToken.sol";

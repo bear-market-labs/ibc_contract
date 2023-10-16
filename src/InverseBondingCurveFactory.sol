@@ -56,9 +56,7 @@ contract InverseBondingCurveFactory {
 
         if (leftReserve > 0) {
             (bool sent,) = msg.sender.call{value: leftReserve}("");
-            if (!sent) {
-                revert FailToSend(msg.sender);
-            }
+            if (!sent) revert FailToSend(msg.sender);
         }
     }
 
@@ -82,8 +80,12 @@ contract InverseBondingCurveFactory {
             new InverseBondingCurveToken(address(this), inverseTokenSymbol, inverseTokenSymbol);
 
         address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _cruveContract, ""));
-        IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), initialReserves);
+        _curveMap[reserveTokenAddress] = proxyContract;
+        curves.push(proxyContract);
+        emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, initialReserves);
 
+        // Initialize Curve contract
+        IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), initialReserves);
         bytes memory data = abi.encodeWithSignature(
             "initialize(address,address,address,address,uint256)",
             _admin, _admin.router(), tokenContract, reserveTokenAddress, initialReserves);
@@ -94,11 +96,6 @@ contract InverseBondingCurveFactory {
         // Change owner to external owner
         (success,) = address(tokenContract).call(abi.encodeWithSignature("transferOwnership(address)", proxyContract));
         require(success, "Token contract owner transfer failed");
-
-        _curveMap[reserveTokenAddress] = proxyContract;
-        curves.push(proxyContract);
-
-        emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, initialReserves);
     }
 
     /**
@@ -108,11 +105,7 @@ contract InverseBondingCurveFactory {
      * @return  address : Contract address of the specified reserve asset's IBC implemenation
      */
     function getCurve(address reserveToken) public view returns (address) {
-        if (reserveToken == address(0)) {
-            reserveToken = _admin.weth();
-        }
-
-        return _curveMap[reserveToken];
+        return _curveMap[reserveToken == address(0)? _admin.weth() : reserveToken];
     }
 
     /**

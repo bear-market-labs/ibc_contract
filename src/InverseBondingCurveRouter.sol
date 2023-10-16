@@ -42,9 +42,7 @@ contract InverseBondingCurveRouter {
             if (useNative && address(reserveToken) == address(_weth)) {
                 _weth.withdraw(amountToUser);
                 (bool success,) = recipient.call{value: amountToUser}("");
-                if (!success) {
-                    revert FailToSend(recipient);
-                }
+                if (!success) revert FailToSend(recipient);
             } else {
                 reserveToken.safeTransfer(recipient, amountToUser);
             }
@@ -76,9 +74,7 @@ contract InverseBondingCurveRouter {
         }
 
         (bool success,) = pool.call(poolCallData);
-        if (!success) {
-            revert FailToExecute(pool, data);
-        }
+        if (!success) revert FailToExecute(pool, data);
     }
 
     function _getInputAndCallData(CommandType command, bytes memory data)

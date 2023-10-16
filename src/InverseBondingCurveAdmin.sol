@@ -41,6 +41,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
     event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 
     constructor(address wethAddress, address routerAddress, address protocolFeeOwner, bytes memory curveContractCode) Ownable() {
+        if (wethAddress == address(0) || routerAddress == address(0) || protocolFeeOwner == address(0)) revert EmptyAddress();
         _weth = wethAddress;
         _router = routerAddress;
         _protocolFeeOwner = protocolFeeOwner;
@@ -122,6 +123,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      * @param   newImplementation : New curve contract implementation
      */
     function upgradeCurveTo(address newImplementation) external onlyOwner {
+        if (newImplementation == address(0)) revert EmptyAddress();
         _curveImplementation = newImplementation;
     }
 

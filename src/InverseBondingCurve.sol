@@ -198,9 +198,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
 
         if (burnTokenAmount == 0) revert LpNotExist();
         if (recipient == address(0)) revert EmptyAddress();
-        if (!CurveLibrary.valueInRange(_currentPrice(), priceLimits)) {
-            revert PriceOutOfLimit(_currentPrice(), priceLimits);
-        }
+        if (!CurveLibrary.valueInRange(_currentPrice(), priceLimits)) revert PriceOutOfLimit(_currentPrice(), priceLimits);
 
         _updateLpReward(sourceAccount);
         uint256 inverseTokenCredit = _lpPositions[sourceAccount].inverseTokenCredit;
@@ -276,10 +274,8 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         }
 
         _increaseReserve(reserve);
-
-        if (!CurveLibrary.valueInRange(reserve.divDown(tokenToUser), priceLimits)) {
-            revert PriceOutOfLimit(reserve.divDown(tokenToUser), priceLimits);
-        }
+        uint256 price = reserve.divDown(tokenToUser);
+        if (!CurveLibrary.valueInRange(price, priceLimits)) revert PriceOutOfLimit(price, priceLimits);
 
         _checkInvariantNotChanged(_virtualInverseTokenSupply() + totalMint);
 
@@ -287,8 +283,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
 
         _mintInverseToken(targetAccount, tokenToUser);
         _mintInverseToken(address(this), fee);
-        // _inverseToken.mint(recipient, tokenToUser);
-        // _inverseToken.mint(address(this), fee);
 
         // Send back additional reserve
         if (reserveIn > reserve) {
@@ -608,10 +602,10 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
      * @param   amount : Token amount
      */
     function _mintInverseToken(address recipient, uint256 amount) private {
-        _inverseToken.mint(recipient, amount);
         if (recipient == address(this)) {
             _inverseTokenBalance += amount;
         }
+        _inverseToken.mint(recipient, amount);
     }
 
     /**
@@ -620,8 +614,8 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
      * @param   amount : Amount to burn
      */
     function _burnInverseToken(uint256 amount) private {
-        _inverseToken.burn(amount);
         _inverseTokenBalance -= amount;
+        _inverseToken.burn(amount);        
     }
 
     /**
@@ -632,8 +626,8 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
      */
     function _transferInverseToken(address recipient, uint256 amount) private {
         if (amount > 0) {
-            _inverseToken.safeTransfer(recipient, amount);
             _inverseTokenBalance -= amount;
+            _inverseToken.safeTransfer(recipient, amount);            
         }
     }
 
@@ -729,9 +723,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     {
         reserveRemoved = burnLpTokenAmount.mulDown(_curveReserveBalance).divDown(_totalLpSupply);
         inverseTokenBurned = burnLpTokenAmount.mulDown(_virtualInverseTokenSupply()).divDown(_totalLpSupply);
-        if (reserveRemoved > _curveReserveBalance) {
-            revert InsufficientBalance();
-        }
+        if (reserveRemoved > _curveReserveBalance) revert InsufficientBalance();
     }
 
     /**
