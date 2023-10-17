@@ -88,6 +88,18 @@ contract MockAdmin is IInverseBondingCurveAdmin {
     }
 }
 
+contract InverseBondingCurveV2 is InverseBondingCurve {
+    uint256 _newValue;
+
+    function newValueGet() public view returns (uint256) {
+        return _newValue;
+    }
+
+    function newValueSet(uint256 value) public {
+        _newValue = value;
+    }
+}
+
 contract InverseBondingCurveTest is Test {
     using FixedPoint for uint256;
 
@@ -1179,6 +1191,121 @@ contract InverseBondingCurveTest is Test {
         (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.STAKING);
         assertEqWithError(inverseTokenReward, 1e11);
     }
+
+    function testRevertIfAdminPause() public {
+
+        uint256[2] memory priceRange = [uint256(0),uint256(0)];
+        uint256[2] memory reserveRange = [uint256(0),uint256(0)];
+
+        CurveParameter memory param = curveContract.curveParameters();
+        assertEqWithError(param.price, 1e18);
+
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.buyTokens(recipient, LIQUIDITY_2ETH_BEFOR_FEE, 0, priceRange, reserveRange);
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.addLiquidity(recipient, LIQUIDITY_2ETH_BEFOR_FEE, priceRange);
+
+        adminContract.pause();
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        vm.expectRevert();
+        curveContract.buyTokens(recipient, LIQUIDITY_2ETH_BEFOR_FEE, 0, priceRange, reserveRange);
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        vm.expectRevert();
+        curveContract.addLiquidity(recipient, LIQUIDITY_2ETH_BEFOR_FEE, priceRange);
+
+
+        uint256 tokenBalanceBefore = tokenContract.balanceOf(recipient);
+        // tokenContract.transfer(address(curveContract), tokenBalanceBefore);
+        vm.expectRevert();
+        curveContract.sellTokens(recipient, tokenBalanceBefore, priceRange, reserveRange);
+
+        
+        vm.expectRevert();
+        curveContract.removeLiquidity(otherRecipient, 0, priceRange);
+
+        vm.expectRevert();
+        curveContract.claimReward(recipient);
+
+        // Tx executed after unpause
+        adminContract.unpause();
+        tokenContract.transfer(address(curveContract), tokenBalanceBefore);
+        curveContract.sellTokens(recipient, tokenBalanceBefore, priceRange, reserveRange);
+        curveContract.removeLiquidity(otherRecipient, 0, priceRange);
+
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.buyTokens(recipient, LIQUIDITY_2ETH_BEFOR_FEE, 0, priceRange, reserveRange);
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.addLiquidity(recipient, LIQUIDITY_2ETH_BEFOR_FEE, priceRange);
+
+    }
+
+    function testAdminUpgrade() public {
+        InverseBondingCurveV2 contractV2 = new InverseBondingCurveV2();
+        (bool success, bytes memory data) = address(curveContract).call(abi.encodeWithSignature("newValueGet()"));
+        assertEq(success, false);
+        adminContract.upgradeCurveTo(address(contractV2));
+        (success, data) = address(curveContract).call(abi.encodeWithSignature("newValueSet(uint256)", 2e18));
+        assertEq(success, true);
+        (success, data) = address(curveContract).call(abi.encodeWithSignature("newValueGet()"));
+        assertEq(success, true);
+        assertEq(bytes32(data), bytes32(uint256(2e18)));
+    }
+
+    function testTransactionFromRouter() public {
+
+        uint256[2] memory priceRange = [uint256(0),uint256(0)];
+        uint256[2] memory reserveRange = [uint256(0),uint256(0)];
+
+        CurveParameter memory param = curveContract.curveParameters();
+        assertEqWithError(param.price, 1e18);
+
+        vm.startPrank(router);
+
+        assertEq(tokenContract.balanceOf(router), 0);
+        reserveToken.mint(router, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.buyTokens(otherRecipient, LIQUIDITY_2ETH_BEFOR_FEE, 0, priceRange, reserveRange);
+
+        assertGt(tokenContract.balanceOf(router), 0);
+
+
+        reserveToken.mint(router, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.addLiquidity(otherRecipient, LIQUIDITY_2ETH_BEFOR_FEE, priceRange);
+
+        (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(otherRecipient);
+        assertGt(lpBalance, 0);
+        assertGt(ibcCredit, 0);
+
+        assertEq(reserveToken.balanceOf(router), 0);
+        uint256 tokenBalanceBefore = tokenContract.balanceOf(router);
+        tokenContract.transfer(address(curveContract), tokenBalanceBefore);
+        curveContract.sellTokens(otherRecipient, tokenBalanceBefore, priceRange, reserveRange);
+        assertGt(reserveToken.balanceOf(router), 0);
+        assertEq(tokenContract.balanceOf(router), 0);
+
+        tokenBalanceBefore = reserveToken.balanceOf(router);        
+        curveContract.removeLiquidity(otherRecipient, 0, priceRange);
+        assertGt(reserveToken.balanceOf(router), tokenBalanceBefore);
+        (lpBalance, ibcCredit) = curveContract.liquidityPositionOf(otherRecipient);
+        assertEqWithError(lpBalance, 0);
+        assertEqWithError(ibcCredit, 0);
+        vm.stopPrank();
+
+    }
+
 
     function logParameter(CurveParameter memory param, string memory desc) private pure {
         console2.log(desc);

@@ -2,19 +2,21 @@
 pragma solidity ^0.8.18;
 
 import "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
-
+import "openzeppelin/utils/Address.sol";
 import "./InverseBondingCurveProxy.sol";
 import "./InverseBondingCurveToken.sol";
 import "./interface/IWETH9.sol";
 import "./Errors.sol";
 
 contract InverseBondingCurveFactory {
-    event CurveCreated(address curveContract, address tokenContract, address proxyContract, uint256 iniitalReserve);
-
+    using Address for address;
+    using Address for address payable;
     IInverseBondingCurveAdmin private _admin;
 
     mapping(address => address) private _curveMap;
     address[] public curves;
+
+    event CurveCreated(address curveContract, address tokenContract, address proxyContract, uint256 iniitalReserve);
 
     constructor(address adminContract) {
         _admin = IInverseBondingCurveAdmin(adminContract);
@@ -55,8 +57,7 @@ contract InverseBondingCurveFactory {
         _createCurve(initialReserves, tokenSymbol, reserveFromAccount, reserveTokenAddress);
 
         if (leftReserve > 0) {
-            (bool sent,) = msg.sender.call{value: leftReserve}("");
-            if (!sent) revert FailToSend(msg.sender);
+            payable(msg.sender).sendValue(leftReserve);
         }
     }
 
@@ -88,13 +89,11 @@ contract InverseBondingCurveFactory {
         IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), initialReserves);
         bytes memory data = abi.encodeWithSignature( "initialize(address,address,address,address,address,uint256)",
             _admin, _admin.router(), tokenContract, reserveTokenAddress, msg.sender, initialReserves);
+        proxyContract.functionCall(data);
 
-        (bool success,) = proxyContract.call(data);
-        require(success, "Curve contract initialize failed");
 
         // Change owner to external owner
-        (success,) = address(tokenContract).call(abi.encodeWithSignature("transferOwnership(address)", proxyContract));
-        require(success, "Token contract owner transfer failed");
+        address(tokenContract).functionCall(abi.encodeWithSignature("transferOwnership(address)", proxyContract));
     }
 
     /**

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity ^0.8.18;
 
-import "openzeppelin/access/Ownable.sol";
+import "openzeppelin/access/Ownable2Step.sol";
 import "openzeppelin/security/Pausable.sol";
 import "openzeppelin/utils/Create2.sol";
 import "./Constants.sol";
@@ -9,7 +9,7 @@ import "./Enums.sol";
 
 import "./InverseBondingCurveFactory.sol";
 
-contract InverseBondingCurveAdmin is Ownable, Pausable {
+contract InverseBondingCurveAdmin is Ownable2Step, Pausable {
     address private _weth;
 
     address private _router;
@@ -40,7 +40,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      */
     event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 
-    constructor(address wethAddress, address routerAddress, address protocolFeeOwner, bytes memory curveContractCode) Ownable() {
+    constructor(address wethAddress, address routerAddress, address protocolFeeOwner, bytes memory curveContractCode) Ownable2Step() {
         if (wethAddress == address(0) || routerAddress == address(0) || protocolFeeOwner == address(0)) revert EmptyAddress();
         _weth = wethAddress;
         _router = routerAddress;
@@ -53,25 +53,20 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
         _createFactory();
     }
 
+    /**
+     * @notice  Pause all curve contract
+     * @dev     
+     */
     function pause() external onlyOwner {
         _pause();
     }
 
+    /**
+     * @notice  Unpause all curve contract
+     * @dev     
+     */
     function unpause() external onlyOwner {
         _unpause();
-    }
-
-    /**
-     * @notice  Query fee configuration
-     * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
-     * @return  lpFee : The percent of fee reward to LP
-     * @return  stakingFee : The percent of fee reward to staker
-     * @return  protocolFee : The percent of fee reward to protocol
-     */
-    function feeConfig(ActionType actionType) external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee) {
-        lpFee = _lpFeePercent[uint256(actionType)];
-        stakingFee = _stakingFeePercent[uint256(actionType)];
-        protocolFee = _protocolFeePercent[uint256(actionType)];
     }
 
     /**
@@ -98,7 +93,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      * @dev
      * @param   protocolFeeOwner : The new owner of protocol fee
      */
-    function updateFeeOwner(address protocolFeeOwner) public onlyOwner {
+    function updateFeeOwner(address protocolFeeOwner) external onlyOwner {
         if (protocolFeeOwner == address(0)) revert EmptyAddress();
 
         _protocolFeeOwner = protocolFeeOwner;
@@ -111,7 +106,7 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      * @dev
      * @param   routerAddress : Router contract address
      */
-    function updateRouter(address routerAddress) public onlyOwner {
+    function updateRouter(address routerAddress) external onlyOwner {
         if (routerAddress == address(0)) revert EmptyAddress();
 
         _router = routerAddress;
@@ -128,13 +123,18 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
     }
 
     /**
-     * @notice  Create curve factory
-     * @dev
+     * @notice  Query fee configuration
+     * @dev     Each fee config array contains configuration for four actions(Buy/Sell/Add liquidity/Remove liquidity)
+     * @return  lpFee : The percent of fee reward to LP
+     * @return  stakingFee : The percent of fee reward to staker
+     * @return  protocolFee : The percent of fee reward to protocol
      */
-    function _createFactory() private {
-        _factory = address(new InverseBondingCurveFactory(address(this)));
+    function feeConfig(ActionType actionType) external view returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee) {
+        lpFee = _lpFeePercent[uint256(actionType)];
+        stakingFee = _stakingFeePercent[uint256(actionType)];
+        protocolFee = _protocolFeePercent[uint256(actionType)];
     }
-
+    
     /**
      * @notice  Get factory contract address
      * @dev
@@ -178,5 +178,13 @@ contract InverseBondingCurveAdmin is Ownable, Pausable {
      */
     function curveImplementation() external view returns (address) {
         return _curveImplementation;
+    }
+
+    /**
+     * @notice  Create curve factory
+     * @dev
+     */
+    function _createFactory() private {
+        _factory = address(new InverseBondingCurveFactory(address(this)));
     }
 }

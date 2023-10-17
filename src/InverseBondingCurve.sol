@@ -139,8 +139,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
 
         CurveLibrary.initializeRewardEMA(_feeStates);
 
-        address protocolFeeOwner = _adminContract.feeOwner();
-        _updateLpReward(protocolFeeOwner);
         _updateLpReward(recipient);
         _createLpPosition(lpTokenAmount - lpToDead, supply - tokenToDead, recipient);
         // Burn some liquidity to dead address to avoid empty pool
@@ -630,49 +628,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     }
 
     /**
-     * @notice  Returns the LP token amount owned by `account`
-     * @dev
-     * @param   account : Account to query
-     */
-    function _lpBalanceOf(address account) private view returns (uint256) {
-        return _lpPositions[account].lpTokenAmount;
-    }
-
-    /**
-     * @notice  Check whether utitlization parameter changed(value change percent within range)
-     * @dev     Revert if changed
-     */
-    function _checkUtilizationNotChanged() private view {
-        uint256 utilization = _currentPrice().mulDown(_virtualInverseTokenSupply()).divDown(_curveReserveBalance);
-        if (CurveLibrary.valueChanged(UTILIZATION, utilization, MAX_UTIL_CHANGE)) revert UtilizationChanged(utilization);
-    }
-
-    /**
-     * @notice  Check whether utitlization parameter changed(value change percent within range)
-     * @dev     Revert if changed
-     * @param   inverseTokenSupply : Curve supply to calculate invariant parameter
-     */
-    function _checkInvariantNotChanged(uint256 inverseTokenSupply) private view {
-        uint256 invariant = _curveReserveBalance.divDown(inverseTokenSupply.powDown(UTILIZATION));
-        if (CurveLibrary.valueChanged(_invariant, invariant, MAX_INVARIANT_CHANGE)) {
-            revert InvariantChanged(_invariant, invariant);
-        }
-    }
-
-    function _checkPayment(IERC20 token, uint256 previousAmount, uint256 inputAmount) private view {
-        if (token.balanceOf(address(this)) - previousAmount < inputAmount) revert InsufficientBalance();
-    }
-
-    function _getSourceAccount(address recipient) private view returns (address) {
-        return msg.sender != _router ? msg.sender : recipient;
-    }
-
-    function _getTargetAccount(address recipient) private view returns (address) {
-        // Reserve token will be sent to router firstly to unwrap to native token
-        return msg.sender == _router ? msg.sender : recipient;
-    }
-
-    /**
      * @notice  Add LP position
      * @dev
      * @param   lpTokenAmount : LP virtual token amount
@@ -693,36 +648,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         _totalLpSupply -= _lpPositions[account].lpTokenAmount;
         _totalLpCreditToken -= _lpPositions[account].inverseTokenCredit;
         _lpPositions[account] = LpPosition(0, 0);
-    }
-
-    /**
-     * @notice  Calculate result for adding LP
-     * @dev
-     * @param   reserveAdded : Reserve amount added
-     * @return  mintToken : LP virtual token assigned to LP
-     * @return  inverseTokenCredit : Virtual IBC token credited to LP
-     */
-    function _calcLpAddition(uint256 reserveAdded) private view returns (uint256 mintToken, uint256 inverseTokenCredit) {
-        mintToken = reserveAdded.mulDown(_totalLpSupply).divDown(_curveReserveBalance);
-        inverseTokenCredit = reserveAdded.mulDown(_virtualInverseTokenSupply()).divDown(_curveReserveBalance);
-    }
-
-    /**
-     * @notice  Calculate result for removing LP
-     * @dev
-     * @param   burnLpTokenAmount : LP virtual token amount
-     * @return  reserveRemoved : Reserve returned to LP
-     * @return  inverseTokenBurned : IBC token need to burned
-     */
-    function _calcLpRemoval(uint256 burnLpTokenAmount)
-        private
-        view
-        returns (uint256 reserveRemoved, uint256 inverseTokenBurned)
-    {
-        reserveRemoved = burnLpTokenAmount.mulDown(_curveReserveBalance).divDown(_totalLpSupply);
-        inverseTokenBurned = burnLpTokenAmount.mulDown(_virtualInverseTokenSupply()).divDown(_totalLpSupply);
-        if (reserveRemoved > _curveReserveBalance) revert InsufficientBalance();
-    }
+    }    
 
     /**
      * @notice  Calculate and update fee state
@@ -760,36 +686,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         feeState.totalReward[REWARD_PROTOCOL] += protocolFee;
 
         return lpFee + stakingFee + protocolFee;
-    }
-
-    /**
-     * @notice  Calculate fee of action
-     * @dev
-     * @param   amount : Token/Reserve amount
-     * @param   amountAfterFee : Whether amount is value after fee deduction
-     * @param   action : Buy/Sell/Add liquidity/Remove liquidity
-     * @return  lpFee : Fee reward for LP
-     * @return  stakingFee : Fee reward for staker
-     * @return  protocolFee : Fee reward for protocol
-     */
-    function _calcFee(uint256 amount, bool amountAfterFee, ActionType action)
-        private
-        view
-        returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
-    {
-        (uint256 lpFeePercent, uint256 stakeFeePercent, uint256 protocolFeePercent) = _adminContract.feeConfig(action);
-        if (amountAfterFee) {
-            uint256 totalFeePercent = lpFeePercent + stakeFeePercent + protocolFeePercent;
-            uint256 amountBeforeFee = amount.divDown(UINT_ONE - totalFeePercent);
-            uint256 totalFee = amountBeforeFee - amount;
-            lpFee = totalFee.mulDown(lpFeePercent).divDown(totalFeePercent);
-            stakingFee = totalFee.mulDown(stakeFeePercent).divDown(totalFeePercent);
-            protocolFee = totalFee - lpFee - stakingFee;
-        } else {
-            lpFee = amount.mulDown(lpFeePercent);
-            stakingFee = amount.mulDown(stakeFeePercent);
-            protocolFee = amount.mulDown(protocolFeePercent);
-        }
     }
 
     /**
@@ -854,7 +750,163 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
             state.pendingRewards[REWARD_STAKE][account] = state.feeForFirstStaker;
             state.feeForFirstStaker = 0;
         }
+    } 
+
+    /**
+     * @notice  Update fee state for claiming reward
+     * @dev
+     * @param   state : Fee state
+     * @return  uint256 : Reward amount to be claimed
+     */
+    function _claimReward(address account, FeeState storage state) private returns (uint256) {
+        uint256 reward = state.pendingRewards[REWARD_LP][account] + state.pendingRewards[REWARD_STAKE][account];
+        state.totalPendingReward[REWARD_LP] -= state.pendingRewards[REWARD_LP][account];
+        state.totalPendingReward[REWARD_STAKE] -= state.pendingRewards[REWARD_STAKE][account];
+        state.pendingRewards[REWARD_LP][account] = 0;
+        state.pendingRewards[REWARD_STAKE][account] = 0;
+
+        return reward;
     }
+
+    /**
+     * @notice  Update reward state for LP
+     * @dev
+     * @param   account : Account to be updated
+     */
+    function _updateLpReward(address account) private {
+        CurveLibrary.updateReward(account, _lpBalanceOf(account), _feeStates, RewardType.LP);
+    }
+
+    /**
+     * @notice  Update reward state for staker
+     * @dev
+     * @param   account : Account to be updated
+     */
+    function _updateStakingReward(address account) private {
+        CurveLibrary.updateReward(account, _stakingBalances[account], _feeStates, RewardType.STAKING);
+    }    
+
+    /**
+     * @notice  Returns the LP token amount owned by `account`
+     * @dev
+     * @param   account : Account to query
+     */
+    function _lpBalanceOf(address account) private view returns (uint256) {
+        return _lpPositions[account].lpTokenAmount;
+    }
+
+    /**
+     * @notice  Check whether utitlization parameter changed(value change percent within range)
+     * @dev     Revert if changed
+     */
+    function _checkUtilizationNotChanged() private view {
+        uint256 utilization = _currentPrice().mulDown(_virtualInverseTokenSupply()).divDown(_curveReserveBalance);
+        if (CurveLibrary.valueChanged(UTILIZATION, utilization, MAX_UTIL_CHANGE)) revert UtilizationChanged(utilization);
+    }
+
+    /**
+     * @notice  Check whether utitlization parameter changed(value change percent within range)
+     * @dev     Revert if changed
+     * @param   inverseTokenSupply : Curve supply to calculate invariant parameter
+     */
+    function _checkInvariantNotChanged(uint256 inverseTokenSupply) private view {
+        uint256 invariant = _curveReserveBalance.divDown(inverseTokenSupply.powDown(UTILIZATION));
+        if (CurveLibrary.valueChanged(_invariant, invariant, MAX_INVARIANT_CHANGE)) {
+            revert InvariantChanged(_invariant, invariant);
+        }
+    }
+
+    /**
+     * @notice  Check whether user transfer in enough amount of input token
+     * @dev     Revert if user doesn't pay enough
+     * @param   token : token contract address
+     * @param   previousAmount : Balance before function call
+     * @param   inputAmount : User specificed input amount
+     */
+    function _checkPayment(IERC20 token, uint256 previousAmount, uint256 inputAmount) private view {
+        if (token.balanceOf(address(this)) - previousAmount < inputAmount) revert InsufficientBalance();
+    }
+
+    /**
+     * @notice  Get proper source account address to process
+     * @dev     When sender is router address, then we will use recipient specified as source LP account
+     * @param   recipient : Input recipient
+     * @return  address : The source account(LP)
+     */
+    function _getSourceAccount(address recipient) private view returns (address) {
+        return msg.sender != _router ? msg.sender : recipient;
+    }
+
+    /**
+     * @notice  Get proper target account address
+     * @dev     When sender is router address, then we will use router as target token account
+     * @param   recipient : Input recipient
+     * @return  address : The target account(for token)
+     */
+    function _getTargetAccount(address recipient) private view returns (address) {
+        // Reserve token will be sent to router firstly to unwrap to native token
+        return msg.sender == _router ? msg.sender : recipient;
+    }
+
+    /**
+     * @notice  Calculate result for adding LP
+     * @dev
+     * @param   reserveAdded : Reserve amount added
+     * @return  mintToken : LP virtual token assigned to LP
+     * @return  inverseTokenCredit : Virtual IBC token credited to LP
+     */
+    function _calcLpAddition(uint256 reserveAdded) private view returns (uint256 mintToken, uint256 inverseTokenCredit) {
+        mintToken = reserveAdded.mulDown(_totalLpSupply).divDown(_curveReserveBalance);
+        inverseTokenCredit = reserveAdded.mulDown(_virtualInverseTokenSupply()).divDown(_curveReserveBalance);
+    }
+
+    /**
+     * @notice  Calculate result for removing LP
+     * @dev
+     * @param   burnLpTokenAmount : LP virtual token amount
+     * @return  reserveRemoved : Reserve returned to LP
+     * @return  inverseTokenBurned : IBC token need to burned
+     */
+    function _calcLpRemoval(uint256 burnLpTokenAmount)
+        private
+        view
+        returns (uint256 reserveRemoved, uint256 inverseTokenBurned)
+    {
+        reserveRemoved = burnLpTokenAmount.mulDown(_curveReserveBalance).divDown(_totalLpSupply);
+        inverseTokenBurned = burnLpTokenAmount.mulDown(_virtualInverseTokenSupply()).divDown(_totalLpSupply);
+        if (reserveRemoved > _curveReserveBalance) revert InsufficientBalance();
+    }
+
+    /**
+     * @notice  Calculate fee of action
+     * @dev
+     * @param   amount : Token/Reserve amount
+     * @param   amountAfterFee : Whether amount is value after fee deduction
+     * @param   action : Buy/Sell/Add liquidity/Remove liquidity
+     * @return  lpFee : Fee reward for LP
+     * @return  stakingFee : Fee reward for staker
+     * @return  protocolFee : Fee reward for protocol
+     */
+    function _calcFee(uint256 amount, bool amountAfterFee, ActionType action)
+        private
+        view
+        returns (uint256 lpFee, uint256 stakingFee, uint256 protocolFee)
+    {
+        (uint256 lpFeePercent, uint256 stakeFeePercent, uint256 protocolFeePercent) = _adminContract.feeConfig(action);
+        if (amountAfterFee) {
+            uint256 totalFeePercent = lpFeePercent + stakeFeePercent + protocolFeePercent;
+            uint256 amountBeforeFee = amount.divDown(UINT_ONE - totalFeePercent);
+            uint256 totalFee = amountBeforeFee - amount;
+            lpFee = totalFee.mulDown(lpFeePercent).divDown(totalFeePercent);
+            stakingFee = totalFee.mulDown(stakeFeePercent).divDown(totalFeePercent);
+            protocolFee = totalFee - lpFee - stakingFee;
+        } else {
+            lpFee = amount.mulDown(lpFeePercent);
+            stakingFee = amount.mulDown(stakeFeePercent);
+            protocolFee = amount.mulDown(protocolFeePercent);
+        }
+    }
+
 
     /**
      * @notice  Price at current supply
@@ -890,40 +942,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         uint256 newReserve = ((currentSupply - amount).divUp(currentSupply)).powUp(UTILIZATION).mulUp(_curveReserveBalance);
 
         return _curveReserveBalance > newReserve ? _curveReserveBalance - newReserve : 0;
-    }
-
-    /**
-     * @notice  Update fee state for claiming reward
-     * @dev
-     * @param   state : Fee state
-     * @return  uint256 : Reward amount to be claimed
-     */
-    function _claimReward(address account, FeeState storage state) private returns (uint256) {
-        uint256 reward = state.pendingRewards[REWARD_LP][account] + state.pendingRewards[REWARD_STAKE][account];
-        state.totalPendingReward[REWARD_LP] -= state.pendingRewards[REWARD_LP][account];
-        state.totalPendingReward[REWARD_STAKE] -= state.pendingRewards[REWARD_STAKE][account];
-        state.pendingRewards[REWARD_LP][account] = 0;
-        state.pendingRewards[REWARD_STAKE][account] = 0;
-
-        return reward;
-    }
-
-    /**
-     * @notice  Update reward state for LP
-     * @dev
-     * @param   account : Account to be updated
-     */
-    function _updateLpReward(address account) private {
-        CurveLibrary.updateReward(account, _lpBalanceOf(account), _feeStates, RewardType.LP);
-    }
-
-    /**
-     * @notice  Update reward state for staker
-     * @dev
-     * @param   account : Account to be updated
-     */
-    function _updateStakingReward(address account) private {
-        CurveLibrary.updateReward(account, _stakingBalances[account], _feeStates, RewardType.STAKING);
     }
 
     /**
