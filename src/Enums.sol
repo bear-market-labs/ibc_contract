@@ -19,3 +19,13 @@ enum FeeType {
     IBC_FROM_LP, // Fee reward from LP removal(only when mint token to LP)
     RESERVE
 }
+
+enum CommandType {
+    BUY_TOKEN,
+    SELL_TOKEN,
+    ADD_LIQUIDITY,
+    REMOVE_LIQUIDITY,
+    CLAIM_REWARD,
+    STAKE,
+    UNSTAKE
+}

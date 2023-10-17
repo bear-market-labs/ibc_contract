@@ -7,5 +7,4 @@ struct CurveParameter {
     uint256 lpSupply;
     uint256 price;
     uint256 parameterInvariant;
-    uint256 parameterUtilization;
 }

@@ -129,9 +129,7 @@ library LogExpMath {
         logx_times_y /= ONE_18;
 
         // Finally, we compute exp(y * ln(x)) to arrive at x^y
-        _require(
-            MIN_NATURAL_EXPONENT <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT, Errors.PRODUCT_OUT_OF_BOUNDS
-        );
+        _require(MIN_NATURAL_EXPONENT <= logx_times_y && logx_times_y <= MAX_NATURAL_EXPONENT, Errors.PRODUCT_OUT_OF_BOUNDS);
 
         return uint256(exp(logx_times_y));
     }
