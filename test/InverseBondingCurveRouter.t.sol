@@ -59,7 +59,7 @@ contract InverseBondingCurveRouterTest is Test {
 
         address poolAddress = _factoryContract.getCurve(address(0));
         IInverseBondingCurve curveContract = IInverseBondingCurve(poolAddress);
-        InverseBondingCurveToken tockenContract = InverseBondingCurveToken(curveContract.inverseTokenAddress());
+        InverseBondingCurveToken inverseToken = InverseBondingCurveToken(curveContract.inverseTokenAddress());
 
         vm.deal(recipient, 1000 ether);
         vm.startPrank(recipient);
@@ -77,37 +77,37 @@ contract InverseBondingCurveRouterTest is Test {
 
         // Buy token
         data = abi.encode(recipient, buyReserve, 0, [0, 0], [0, 0]);
-        uint256 tokenBalanceBefore = tockenContract.balanceOf(recipient);
+        uint256 tokenBalanceBefore = inverseToken.balanceOf(recipient);
         _router.execute{value: buyReserve}(recipient, poolAddress, true, CommandType.BUY_TOKEN, data);
-        uint256 boughtToken = tockenContract.balanceOf(recipient) - tokenBalanceBefore;
+        uint256 boughtToken = inverseToken.balanceOf(recipient) - tokenBalanceBefore;
         assertGt(boughtToken, 0);
         console2.log("boughtToken", boughtToken);
 
         // Stake token
-        tokenBalanceBefore = tockenContract.balanceOf(recipient);
+        tokenBalanceBefore = inverseToken.balanceOf(recipient);
         data = abi.encode(recipient, tokenBalanceBefore);
 
-        tockenContract.approve(address(_router), tokenBalanceBefore);
+        inverseToken.approve(address(_router), tokenBalanceBefore);
         _router.execute(recipient, poolAddress, true, CommandType.STAKE, data);
-        assertEq(tockenContract.balanceOf(recipient), 0);
+        assertEq(inverseToken.balanceOf(recipient), 0);
         console2.log("stake success");
 
         // Unstake token
         data = abi.encode(recipient, tokenBalanceBefore);
         _router.execute(recipient, poolAddress, true, CommandType.UNSTAKE, data);
-        assertEq(tockenContract.balanceOf(recipient), tokenBalanceBefore);
+        assertEq(inverseToken.balanceOf(recipient), tokenBalanceBefore);
         console2.log("unstake success");
 
         // Sell token
         data = abi.encode(recipient, boughtToken / 2, [0, 0], [0, 0]);
         uint256 reserveBalanceBefore = recipient.balance;
-        tockenContract.approve(address(_router), boughtToken);
+        inverseToken.approve(address(_router), boughtToken);
         _router.execute(recipient, poolAddress, true, CommandType.SELL_TOKEN, data);
         assertGt(recipient.balance, reserveBalanceBefore);
         console2.log("sell liquidity:", recipient.balance - reserveBalanceBefore);
 
         // Remove liquidity
-        data = abi.encode(recipient, tockenContract.balanceOf(recipient), [0, 0]);
+        data = abi.encode(recipient, inverseToken.balanceOf(recipient), [0, 0]);
         reserveBalanceBefore = recipient.balance;
         _router.execute(recipient, poolAddress, true, CommandType.REMOVE_LIQUIDITY, data);
         assertGt(recipient.balance, reserveBalanceBefore);
@@ -115,10 +115,10 @@ contract InverseBondingCurveRouterTest is Test {
 
         // Claim reward
         data = abi.encode(recipient);
-        tokenBalanceBefore = tockenContract.balanceOf(recipient);
+        tokenBalanceBefore = inverseToken.balanceOf(recipient);
         _router.execute(recipient, poolAddress, true, CommandType.CLAIM_REWARD, data);
-        assertGt(tockenContract.balanceOf(recipient), tokenBalanceBefore);
-        console2.log("claim reward:", tockenContract.balanceOf(recipient) - tokenBalanceBefore);
+        assertGt(inverseToken.balanceOf(recipient), tokenBalanceBefore);
+        console2.log("claim reward:", inverseToken.balanceOf(recipient) - tokenBalanceBefore);
 
         vm.stopPrank();
     }
@@ -135,7 +135,7 @@ contract InverseBondingCurveRouterTest is Test {
 
         address poolAddress = _factoryContract.getCurve(address(reserveToken));
         IInverseBondingCurve curveContract = IInverseBondingCurve(poolAddress);
-        InverseBondingCurveToken tockenContract = InverseBondingCurveToken(curveContract.inverseTokenAddress());
+        InverseBondingCurveToken inverseToken = InverseBondingCurveToken(curveContract.inverseTokenAddress());
 
         reserveToken.mint(recipient, 1e8);
         vm.startPrank(recipient);
@@ -152,38 +152,38 @@ contract InverseBondingCurveRouterTest is Test {
 
         // Buy token
         data = abi.encode(recipient, buyReserve, 0, [0, 0], [0, 0]);
-        uint256 tokenBalanceBefore = tockenContract.balanceOf(recipient);
+        uint256 tokenBalanceBefore = inverseToken.balanceOf(recipient);
         reserveToken.approve(address(_router), buyReserve);
         _router.execute(recipient, poolAddress, false, CommandType.BUY_TOKEN, data);
-        uint256 boughtToken = tockenContract.balanceOf(recipient) - tokenBalanceBefore;
+        uint256 boughtToken = inverseToken.balanceOf(recipient) - tokenBalanceBefore;
         assertGt(boughtToken, 0);
         console2.log("boughtToken", boughtToken);
 
         // Stake token
-        tokenBalanceBefore = tockenContract.balanceOf(recipient);
+        tokenBalanceBefore = inverseToken.balanceOf(recipient);
         data = abi.encode(recipient, tokenBalanceBefore);
 
-        tockenContract.approve(address(_router), tokenBalanceBefore);
+        inverseToken.approve(address(_router), tokenBalanceBefore);
         _router.execute(recipient, poolAddress, false, CommandType.STAKE, data);
-        assertEq(tockenContract.balanceOf(recipient), 0);
+        assertEq(inverseToken.balanceOf(recipient), 0);
         console2.log("stake success");
 
         // Unstake token
         data = abi.encode(recipient, tokenBalanceBefore);
         _router.execute(recipient, poolAddress, false, CommandType.UNSTAKE, data);
-        assertEq(tockenContract.balanceOf(recipient), tokenBalanceBefore);
+        assertEq(inverseToken.balanceOf(recipient), tokenBalanceBefore);
         console2.log("unstake success");
 
         // Sell token
         data = abi.encode(recipient, boughtToken / 2, [0, 0], [0, 0]);
         uint256 reserveBalanceBefore = reserveToken.balanceOf(recipient);
-        tockenContract.approve(address(_router), boughtToken);
+        inverseToken.approve(address(_router), boughtToken);
         _router.execute(recipient, poolAddress, false, CommandType.SELL_TOKEN, data);
         assertGt(reserveToken.balanceOf(recipient), reserveBalanceBefore);
         console2.log("sell liquidity:", reserveToken.balanceOf(recipient) - reserveBalanceBefore);
 
         // Remove liquidity
-        data = abi.encode(recipient, tockenContract.balanceOf(recipient), [0, 0]);
+        data = abi.encode(recipient, inverseToken.balanceOf(recipient), [0, 0]);
         reserveBalanceBefore = reserveToken.balanceOf(recipient);
         _router.execute(recipient, poolAddress, false, CommandType.REMOVE_LIQUIDITY, data);
         assertGt(reserveToken.balanceOf(recipient), reserveBalanceBefore);
@@ -191,10 +191,10 @@ contract InverseBondingCurveRouterTest is Test {
 
         // Claim reward
         data = abi.encode(recipient);
-        tokenBalanceBefore = tockenContract.balanceOf(recipient);
+        tokenBalanceBefore = inverseToken.balanceOf(recipient);
         _router.execute(recipient, poolAddress, false, CommandType.CLAIM_REWARD, data);
-        assertGt(tockenContract.balanceOf(recipient), tokenBalanceBefore);
-        console2.log("claim reward:", tockenContract.balanceOf(recipient) - tokenBalanceBefore);
+        assertGt(inverseToken.balanceOf(recipient), tokenBalanceBefore);
+        console2.log("claim reward:", inverseToken.balanceOf(recipient) - tokenBalanceBefore);
 
         vm.stopPrank();
     }
