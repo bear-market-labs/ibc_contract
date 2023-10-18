@@ -665,6 +665,48 @@ contract InverseBondingCurveTest is Test {
         assertEq(tokenBalanceAfter - tokenBalanceBefore, inverseTokenReward);
     }
 
+    function testClaimProtocolFeeWithAdditionalToken() public {
+        uint256[2] memory valueRange = [uint256(0),uint256(0)];
+        uint256 buyLiquidity = 1e18;
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.addLiquidity(recipient, LIQUIDITY_2ETH_BEFOR_FEE, valueRange);
+
+        uint256 accumulatedReserveFee = (LIQUIDITY_2ETH_BEFOR_FEE - 2e18).divDown(3e18);
+
+        uint256 balanceBefore = tokenContract.balanceOf(otherRecipient);
+
+        reserveToken.mint(recipient, buyLiquidity);
+        reserveToken.transfer(address(curveContract), buyLiquidity);
+        curveContract.buyTokens(otherRecipient, buyLiquidity, 0, valueRange, valueRange);
+
+        uint256 balanceAfter = tokenContract.balanceOf(otherRecipient);
+        uint256 balanceChange = balanceAfter - balanceBefore;
+
+        uint256 accumulatedTokenFee =
+            uint256(balanceChange.divDown(1e18 - FEE_PERCENT.mulDown(3e18)).mulDown(FEE_PERCENT));
+        (uint256 inverseTokenReward, uint256 reserveReward) = curveContract.rewardOfProtocol();
+
+        assertEqWithError(inverseTokenReward, accumulatedTokenFee);
+        assertEqWithError(reserveReward, accumulatedReserveFee);
+
+        reserveToken.mint(recipient, 1e18);
+        reserveToken.transfer(address(curveContract), 1e18);
+        vm.startPrank(otherRecipient);
+        tokenContract.transfer(address(curveContract), 1e18);
+        vm.stopPrank();
+        uint256 reserveBalanceBefore = reserveToken.balanceOf(feeOwner);
+        uint256 tokenBalanceBefore = tokenContract.balanceOf(feeOwner);
+        vm.startPrank(feeOwner);
+        curveContract.claimProtocolReward();
+        vm.stopPrank();
+        uint256 reserveBalanceAfter = reserveToken.balanceOf(feeOwner);
+        uint256 tokenBalanceAfter = tokenContract.balanceOf(feeOwner);
+        assertEq(reserveBalanceAfter - reserveBalanceBefore, reserveReward + 1e18);
+        assertEq(tokenBalanceAfter - tokenBalanceBefore, inverseTokenReward + 1e18);
+    }
+
     function testRewardFirstStaker() public {
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         uint256 buyLiquidity = 1e18;

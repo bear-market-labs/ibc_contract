@@ -403,10 +403,10 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
             + _feeStates[FEE_IBC_FROM_LP].totalPendingReward[REWARD_PROTOCOL]
             + (_inverseToken.balanceOf(address(this)) - _inverseTokenBalance); // Additional token send to contract
         uint256 reserveReward = _feeStates[FEE_RESERVE].totalPendingReward[REWARD_PROTOCOL]
-            + (_reserveToken.balanceOf(address(this)) - _reserveBalance);
+            + (CurveLibrary.scaleFrom(_reserveToken.balanceOf(address(this)), _reserveTokenDecimal)- _reserveBalance);
 
         _inverseTokenBalance = _inverseToken.balanceOf(address(this));
-        _reserveBalance = _reserveToken.balanceOf(address(this));
+        _reserveBalance = CurveLibrary.scaleFrom(_reserveToken.balanceOf(address(this)), _reserveTokenDecimal);
 
         _feeStates[FEE_IBC_FROM_TRADE].totalPendingReward[REWARD_PROTOCOL] = 0;
         _feeStates[FEE_IBC_FROM_LP].totalPendingReward[REWARD_PROTOCOL] = 0;
