@@ -535,15 +535,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     }
 
     /**
-     * @notice  Get implementation contract address of the upgradable pattern
-     * @dev
-     * @return  address : Implementation contract address
-     */
-    function getImplementation() external view returns (address) {
-        return _getImplementation();
-    }
-
-    /**
      * @notice  Query total staked IBC token amount
      * @dev
      * @return  uint256 : Total staked amount
