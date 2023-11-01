@@ -141,7 +141,7 @@ interface IInverseBondingCurve {
         uint256 exactAmountOut,
         uint256[2] memory priceLimits,
         uint256[2] memory reserveLimits
-    ) external payable;
+    ) external;
 
     /**
      * @notice  Sell IBC token to get reserve back
