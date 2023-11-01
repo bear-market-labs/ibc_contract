@@ -36,8 +36,8 @@ contract InverseBondingCurveFactory {
         uint256 leftReserve = msg.value;
         address reserveFromAccount = msg.sender;
         if (reserveTokenAddress == address(0) && msg.value > 0) {
-            if (msg.value < initialReserves) {
-                revert InsufficientBalance();
+            if (msg.value != initialReserves) {
+                revert InputBalanceNotMatch();
             }
             // Ignore reserve parameter passed in, use all msg.value as reserve
             initialReserves = msg.value;

@@ -21,3 +21,4 @@ error PoolAlreadyExist();
 error CommandUnsupport();
 error EtherNotAccept();
 error DepositNotAllowed();
+error InputBalanceNotMatch();
