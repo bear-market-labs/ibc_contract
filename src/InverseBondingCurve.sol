@@ -216,17 +216,19 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
             sourceAccount, targetAccount, burnTokenAmount, reserveToUser, inverseTokenCredit, inverseTokenBurned, _invariant
         );
 
-        if (inverseTokenCredit > inverseTokenBurned) {
+        uint256 inverseTokenToUser = inverseTokenIn;
+        if (inverseTokenCredit > inverseTokenBurned) {            
             uint256 tokenMint = inverseTokenCredit - inverseTokenBurned;
             fee = _calcAndUpdateFee(tokenMint, false, ActionType.REMOVE_LIQUIDITY, _feeStates[FEE_IBC_FROM_LP]);
-            _mintInverseToken(targetAccount, tokenMint - fee);
-            _mintInverseToken(address(this), fee);
+            _mintInverseToken(address(this), tokenMint);
+            inverseTokenToUser = inverseTokenIn + tokenMint - fee;            
         } else if (inverseTokenCredit < inverseTokenBurned) {
             if (inverseTokenIn < inverseTokenBurned - inverseTokenCredit) revert InsufficientBalance();
             _burnInverseToken(inverseTokenBurned - inverseTokenCredit);
-            // Transfer additional token back to user
-            _transferInverseToken(targetAccount, inverseTokenIn - (inverseTokenBurned - inverseTokenCredit));
+            // Additional token back to user
+            inverseTokenToUser = inverseTokenIn - (inverseTokenBurned - inverseTokenCredit);
         }
+        _transferInverseToken(targetAccount, inverseTokenToUser);
 
         _checkUtilizationNotChanged();
         _transferReserveToken(targetAccount, reserveToUser);
