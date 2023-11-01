@@ -2,6 +2,8 @@
 pragma solidity ^0.8.18;
 
 import "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
+import "openzeppelin/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin/utils/Address.sol";
 import "./InverseBondingCurveProxy.sol";
 import "./InverseBondingCurveToken.sol";
@@ -9,6 +11,7 @@ import "./interface/IWETH9.sol";
 import "./Errors.sol";
 
 contract InverseBondingCurveFactory {
+    using SafeERC20 for IERC20;
     using Address for address;
     using Address for address payable;
     IInverseBondingCurveAdmin private _admin;
@@ -86,11 +89,10 @@ contract InverseBondingCurveFactory {
         emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, initialReserves);
 
         // Initialize Curve contract
-        IERC20Metadata(reserveTokenAddress).transferFrom(reserveFromAccount, address(proxyContract), initialReserves);
+        IERC20(reserveTokenAddress).safeTransferFrom(reserveFromAccount, address(proxyContract), initialReserves);
         bytes memory data = abi.encodeWithSignature( "initialize(address,address,address,address,address,uint256)",
             _admin, _admin.router(), tokenContract, reserveTokenAddress, msg.sender, initialReserves);
         proxyContract.functionCall(data);
-
 
         // Change owner to external owner
         address(tokenContract).functionCall(abi.encodeWithSignature("transferOwnership(address)", proxyContract));
