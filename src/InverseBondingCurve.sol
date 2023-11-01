@@ -677,7 +677,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         if (_totalStaked > 0) {
             feeState.globalFeeIndexes[REWARD_STAKE] += stakingFee.divDown(_totalStaked);
         } else {
-            feeState.feeForFirstStaker = stakingFee;
+            feeState.feeForFirstStaker += stakingFee;
         }
         feeState.totalReward[REWARD_STAKE] += stakingFee;
         feeState.totalPendingReward[REWARD_STAKE] += stakingFee;
