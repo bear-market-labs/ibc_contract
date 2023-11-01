@@ -210,20 +210,20 @@ library CurveLibrary {
         }
     }
 
-    function scaleTo(uint256 vaule, uint8 targetDecimals) public pure returns (uint256) {
-        if (targetDecimals == DEFAULT_DECIMALS) return vaule;
+    function scaleTo(uint256 value, uint8 targetDecimals) public pure returns (uint256) {
+        if (targetDecimals == DEFAULT_DECIMALS) return value;
 
         return targetDecimals < DEFAULT_DECIMALS
-            ? vaule / (10 ** (DEFAULT_DECIMALS - targetDecimals))
-            : vaule * (10 ** (targetDecimals - DEFAULT_DECIMALS));
+            ? value / (10 ** (DEFAULT_DECIMALS - targetDecimals))
+            : value * (10 ** (targetDecimals - DEFAULT_DECIMALS));
     }
 
-    function scaleFrom(uint256 vaule, uint8 fromDecimals) public pure returns (uint256) {
-        if (fromDecimals == DEFAULT_DECIMALS) return vaule;
+    function scaleFrom(uint256 value, uint8 fromDecimals) public pure returns (uint256) {
+        if (fromDecimals == DEFAULT_DECIMALS) return value;
 
         return fromDecimals < DEFAULT_DECIMALS
-            ? vaule * (10 ** (DEFAULT_DECIMALS - fromDecimals))
-            : vaule / (10 ** (fromDecimals - DEFAULT_DECIMALS));
+            ? value * (10 ** (DEFAULT_DECIMALS - fromDecimals))
+            : value / (10 ** (fromDecimals - DEFAULT_DECIMALS));
     }
 
     function valueInRange(uint256 value, uint256[2] memory range) public pure returns (bool) {

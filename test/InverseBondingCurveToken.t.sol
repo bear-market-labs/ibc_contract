@@ -13,7 +13,9 @@ contract InverseBondingCurveTokenTest is Test {
     address nonOwner = vm.addr(3);
 
     function setUp() public {
-        tokenContract = new InverseBondingCurveToken(owner, "IBC", "IBC");
+        vm.startPrank(owner);
+        tokenContract = new InverseBondingCurveToken("IBC", "IBC");
+        vm.stopPrank();
     }
 
     function testSymbol() public {

@@ -148,7 +148,7 @@ contract InverseBondingCurveTest is Test {
         reserveToken.mint(initializer, initialReserve);
         vm.deal(initializer, 100 ether);
 
-        tokenContract = new InverseBondingCurveToken(address(this), "ibETH", "ibETH");
+        tokenContract = new InverseBondingCurveToken("ibETH", "ibETH");
 
         adminContract = new MockAdmin(feeOwner, router);
 
