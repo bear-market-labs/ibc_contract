@@ -127,7 +127,7 @@ library CurveLibrary {
         alpha = _calcParameterAlpha(feeState[FEE_RESERVE]);
         reserveReward = _calcEMA(feeState[FEE_RESERVE], rewardType, alpha);
 
-        // Parameter alpha is same with reserve reward
+        alpha = _calcParameterAlpha(feeState[FEE_IBC_FROM_LP]);
         inverseTokenReward += _calcEMA(feeState[FEE_IBC_FROM_LP], rewardType, alpha);
     }
 
