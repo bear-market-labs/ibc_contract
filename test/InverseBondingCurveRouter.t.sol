@@ -53,7 +53,7 @@ contract InverseBondingCurveRouterTest is Test {
         uint256 initialReserve = 2e18;
         uint256 buyReserve = 2e18;
         uint256 creatorBalanceBefore = address(this).balance;
-        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0));
+        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0), address(this));
 
         assertEq(creatorBalanceBefore - address(this).balance, initialReserve);
 
@@ -131,7 +131,7 @@ contract InverseBondingCurveRouterTest is Test {
         reserveToken.mint(address(this), initialReserve);
         reserveToken.approve(address(_factoryContract), initialReserve);
 
-        _factoryContract.createCurve(initialReserve, address(reserveToken));
+        _factoryContract.createCurve(initialReserve, address(reserveToken), address(this));
 
         address poolAddress = _factoryContract.getCurve(address(reserveToken));
         IInverseBondingCurve curveContract = IInverseBondingCurve(poolAddress);

@@ -18,7 +18,7 @@ contract CreateCurveScript is Script {
 
         uint256 reserve = 2 ether;
 
-        InverseBondingCurveFactory(factoryAddress).createCurve{value: reserve}(reserve, address(0));
+        InverseBondingCurveFactory(factoryAddress).createCurve{value: reserve}(reserve, address(0), vm.addr(privateKey));
 
         InverseBondingCurve curve = InverseBondingCurve(InverseBondingCurveFactory(factoryAddress).getCurve(address(0)));
 

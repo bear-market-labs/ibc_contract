@@ -30,8 +30,9 @@ contract InverseBondingCurveFactory {
      * @dev
      * @param   initialReserves : Amount of initial reserves to supply to curve
      * @param   reserveTokenAddress : Contract address of the reserve asset token contract
+     * @param   recipient: Account to hold initial LP position
      */
-    function createCurve(uint256 initialReserves, address reserveTokenAddress) external payable {
+    function createCurve(uint256 initialReserves, address reserveTokenAddress, address recipient) external payable {
         string memory tokenSymbol = "";
         uint256 leftReserve = msg.value;
         address reserveFromAccount = msg.sender;
@@ -57,7 +58,7 @@ contract InverseBondingCurveFactory {
             revert PoolAlreadyExist();
         }
 
-        _createCurve(initialReserves, tokenSymbol, reserveFromAccount, reserveTokenAddress);
+        _createCurve(initialReserves, tokenSymbol, reserveFromAccount, reserveTokenAddress, recipient);
 
         if (leftReserve > 0) {
             payable(msg.sender).sendValue(leftReserve);
@@ -71,12 +72,14 @@ contract InverseBondingCurveFactory {
      * @param   inverseTokenSymbol : IBC token symbol
      * @param   reserveFromAccount : The account to transfer reserve token from
      * @param   reserveTokenAddress : Contract address of the reserve asset token contract
+     * @param   recipient: Account to hold initial LP position
      */
     function _createCurve(
         uint256 initialReserves,
         string memory inverseTokenSymbol,
         address reserveFromAccount,
-        address reserveTokenAddress
+        address reserveTokenAddress,
+        address recipient
     ) private {
         address _cruveContract = _admin.curveImplementation();
 
@@ -91,7 +94,7 @@ contract InverseBondingCurveFactory {
         // Initialize Curve contract
         IERC20(reserveTokenAddress).safeTransferFrom(reserveFromAccount, address(proxyContract), initialReserves);
         bytes memory data = abi.encodeWithSignature( "initialize(address,address,address,address,address,uint256)",
-            _admin, _admin.router(), tokenContract, reserveTokenAddress, msg.sender, initialReserves);
+            _admin, _admin.router(), tokenContract, reserveTokenAddress, recipient, initialReserves);
         proxyContract.functionCall(data);
 
         // Change owner to external owner
