@@ -256,7 +256,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         uint256 exactAmountOut,
         uint256[2] memory priceLimits,
         uint256[2] memory reserveLimits
-    ) external payable whenNotPaused {
+    ) external whenNotPaused {
         if (recipient == address(0)) revert EmptyAddress();
         if (!CurveLibrary.valueInRange(_reserveBalance, reserveLimits)) revert ReserveOutOfLimit(_reserveBalance, reserveLimits);
 
