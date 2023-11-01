@@ -9,6 +9,7 @@ import "./InverseBondingCurveProxy.sol";
 import "./InverseBondingCurveToken.sol";
 import "./interface/IWETH9.sol";
 import "./Errors.sol";
+import "./CurveLibrary.sol";
 
 contract InverseBondingCurveFactory {
     using SafeERC20 for IERC20;
@@ -36,6 +37,7 @@ contract InverseBondingCurveFactory {
         string memory tokenSymbol = "";
         uint256 leftReserve = msg.value;
         address reserveFromAccount = msg.sender;
+        uint8 tokenDecimals = 18;
         if (reserveTokenAddress == address(0) && msg.value > 0) {
             if (msg.value < initialReserves) {
                 revert InsufficientBalance();
@@ -52,13 +54,14 @@ contract InverseBondingCurveFactory {
             reserveFromAccount = address(this);
         } else {
             tokenSymbol = string(abi.encodePacked("ib", IERC20Metadata(reserveTokenAddress).symbol()));
+            tokenDecimals = IERC20Metadata(reserveTokenAddress).decimals();
         }
 
         if (_curveMap[reserveTokenAddress] != address(0)) {
             revert PoolAlreadyExist();
         }
 
-        _createCurve(initialReserves, tokenSymbol, reserveFromAccount, reserveTokenAddress, recipient);
+        _createCurve(initialReserves, tokenSymbol, reserveFromAccount, reserveTokenAddress, tokenDecimals, recipient);
 
         if (leftReserve > 0) {
             payable(msg.sender).sendValue(leftReserve);
@@ -72,6 +75,7 @@ contract InverseBondingCurveFactory {
      * @param   inverseTokenSymbol : IBC token symbol
      * @param   reserveFromAccount : The account to transfer reserve token from
      * @param   reserveTokenAddress : Contract address of the reserve asset token contract
+     * @param   tokenDecimals: Reserve token decimals
      * @param   recipient: Account to hold initial LP position
      */
     function _createCurve(
@@ -79,6 +83,7 @@ contract InverseBondingCurveFactory {
         string memory inverseTokenSymbol,
         address reserveFromAccount,
         address reserveTokenAddress,
+        uint8 tokenDecimals,
         address recipient
     ) private {
         address _cruveContract = _admin.curveImplementation();
@@ -89,7 +94,7 @@ contract InverseBondingCurveFactory {
         address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _cruveContract, ""));
         _curveMap[reserveTokenAddress] = proxyContract;
         curves.push(proxyContract);
-        emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, initialReserves);
+        emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, CurveLibrary.scaleFrom(initialReserves, tokenDecimals));
 
         // Initialize Curve contract
         IERC20(reserveTokenAddress).safeTransferFrom(reserveFromAccount, address(proxyContract), initialReserves);

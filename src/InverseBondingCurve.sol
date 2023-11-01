@@ -122,7 +122,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         _adminContract = IInverseBondingCurveAdmin(adminContract);
         _router = router;
 
-        _checkPayment(_reserveToken, _reserveBalance, reserve);
+        _checkPayment(_reserveToken, 0, reserve);
         reserve = CurveLibrary.scaleFrom(reserve, _reserveTokenDecimal);
         if (reserve < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(reserve);
         _reserveBalance += reserve;
