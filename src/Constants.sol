@@ -14,7 +14,7 @@ uint256 constant MAX_FEE_PERCENT = 1e17;
 uint256 constant MAX_INVARIANT_CHANGE = 1e12; //Max allowed change percent: 0.000001 -> 0.0001%
 uint256 constant MAX_UTIL_CHANGE = 1e12; //Max allowed change percent: 0.000001 -> 0.0001%
 
-uint256 constant DAILY_BLOCK_COUNT = 7200;
+uint256 constant SECONDS_PER_DAY = 864e20;
 
 uint8 constant MAX_ACTION_COUNT = 4;
 uint8 constant MAX_FEE_TYPE_COUNT = 3;

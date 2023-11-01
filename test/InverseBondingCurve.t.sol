@@ -143,6 +143,7 @@ contract InverseBondingCurveTest is Test {
 
     function setUp() public {
         uint256 initialReserve = 2e18;
+        vm.warp(1);
         reserveToken = new ReserveToken("WETH", "WETH", 18);
 
         reserveToken.mint(initializer, initialReserve);
@@ -161,6 +162,7 @@ contract InverseBondingCurveTest is Test {
         reserveToken.transfer(address(curveContract), initialReserve);
         curveContract.initialize(address(adminContract), router, address(tokenContract), address(reserveToken), initializer, initialReserve);
         vm.stopPrank();
+
     }
 
     function testInverseTokenSymbol() public {
@@ -1215,79 +1217,112 @@ contract InverseBondingCurveTest is Test {
         assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], 0);
     }
 
-    function testBlockRewardEMA() public {
-        uint256[2] memory priceRange = [uint256(0),uint256(0)];
-        uint256[2] memory reserveRange = [uint256(0),uint256(0)];
+    function testRewardEMAPerSecond() public {
+
         uint256 buyLiquidity = 100 ether;
         //vm.roll(block.number() + 1)
         // vm.roll(block.number + 1);
-        (uint256 inverseTokenReward, uint256 reserveReward) = curveContract.blockRewardEMA(RewardType.LP);
+        uint256 blockTimestamp = block.timestamp;
+        // console.log(block.timestamp);
+        // blockTimestamp += 12;
+        // vm.warp(blockTimestamp);
+        (uint256 inverseTokenReward, uint256 reserveReward) = curveContract.rewardEMAPerSecond(RewardType.LP);
         assertEq(inverseTokenReward, 0);
         assertEq(reserveReward, 0);
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.STAKING);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.STAKING);
         assertEq(inverseTokenReward, 0);
         assertEq(reserveReward, 0);
 
         reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
         reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        {
+        uint256[2] memory priceRange = [uint256(0),uint256(0)];
         curveContract.addLiquidity(recipient, LIQUIDITY_2ETH_BEFOR_FEE, priceRange);
+        }
+
+
 
         uint256 addLiquidityFee = LIQUIDITY_2ETH_BEFOR_FEE - 2e18;
         uint256 alpha = 138879244274000; // 1 - exp(-1/7200)
 
-        uint256 feeForLpStaking = addLiquidityFee.mulDown(alpha).divDown(3e18);
+        uint256 feeForLpStaking = addLiquidityFee.divDown(12e18).mulDown(alpha).divDown(3e18);
         vm.roll(block.number + 1);
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.LP);
+        blockTimestamp += 12;
+        vm.warp(blockTimestamp);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.LP);
         assertEq(inverseTokenReward, 0);
         assertEqWithError(reserveReward, feeForLpStaking);
 
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.STAKING);
+        
+
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.STAKING);
         assertEq(inverseTokenReward, 0);
         assertEqWithError(reserveReward, feeForLpStaking);
 
 
         reserveToken.mint(recipient, buyLiquidity);
         reserveToken.transfer(address(curveContract), buyLiquidity);
-        curveContract.buyTokens(recipient, buyLiquidity, 0, priceRange, reserveRange);
+        {
+            uint256[2] memory priceRange = [uint256(0),uint256(0)];
+            uint256[2] memory reserveRange = [uint256(0),uint256(0)];
+            curveContract.buyTokens(recipient, buyLiquidity, 0, priceRange, reserveRange);
+        }
+        
 
         vm.roll(block.number + 1);
+        blockTimestamp += 12;
+        vm.warp(blockTimestamp);
         uint256 tokenOut = tokenContract.balanceOf(recipient);
         uint256 fee = (tokenOut * feePercent) / (1e18 - feePercent);
-        uint256 lpEMA = fee.mulDown(alpha).divDown(3e18);
+        uint256 lpEMA = fee.divDown(12e18).mulDown(alpha).divDown(3e18);
 
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.LP);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.LP);
         assertEqWithError(inverseTokenReward, lpEMA);
         assertEqWithError(reserveReward, feeForLpStaking);
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.STAKING);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.STAKING);
         assertEqWithError(inverseTokenReward, lpEMA);
 
-
-        for (uint256 i = 0; i < 1000; i++) {
+        for (uint256 i = 0; i < 1000; i++) {            
             vm.roll(block.number + 100);
+            blockTimestamp += 1000;
+            vm.warp(blockTimestamp);
+            
 
             tokenContract.transfer(address(curveContract), 1e18);
+            {
+            uint256[2] memory priceRange = [uint256(0),uint256(0)];
+            uint256[2] memory reserveRange = [uint256(0),uint256(0)];                
             curveContract.sellTokens(recipient, 1e18, priceRange, reserveRange);
+            }
+            
         }
 
         // eventually it will be close to average if enough time
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.LP);
-        assertEqWithError(inverseTokenReward, 1e13);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.LP);
+        assertEqWithError(inverseTokenReward, uint256(1e15).divDown(1000e18));
 
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.STAKING);
-        assertEqWithError(inverseTokenReward, 1e13);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.STAKING);
+        assertEqWithError(inverseTokenReward, uint256(1e15).divDown(1000e18));
+
 
         for (uint256 i = 0; i < 1000; i++) {
             vm.roll(block.number + 100);
+            blockTimestamp += 1000;
+            vm.warp(blockTimestamp);
 
             tokenContract.transfer(address(curveContract), 1e16);
-            curveContract.sellTokens(recipient, 1e16, priceRange, reserveRange);
+            {
+            uint256[2] memory priceRange = [uint256(0),uint256(0)];
+            uint256[2] memory reserveRange = [uint256(0),uint256(0)];
+                curveContract.sellTokens(recipient, 1e16, priceRange, reserveRange);
+            }
         }
 
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.LP);
-        assertEqWithError(inverseTokenReward, 1e11);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.LP);
+        assertEqWithError(inverseTokenReward, uint256(1e11).divDown(1000e18));
 
-        (inverseTokenReward, reserveReward) = curveContract.blockRewardEMA(RewardType.STAKING);
-        assertEqWithError(inverseTokenReward, 1e11);
+        (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.STAKING);
+        assertEqWithError(inverseTokenReward, uint256(1e11).divDown(1000e18));
     }
 
     function testRevertIfAdminPause() public {
