@@ -181,7 +181,7 @@ library CurveLibrary {
      */
     function _calcParameterAlpha(FeeState storage feeState) private view returns (uint256 alpha) {
         int256 exponent = int256((block.number - feeState.emaRewardUpdateBlockNumber).divDown(DAILY_BLOCK_COUNT));
-        alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? 0 : UINT_ONE - uint256(LogExpMath.exp(-exponent));
+        alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? UINT_ONE : UINT_ONE - uint256(LogExpMath.exp(-exponent));
     }
 
     /**
