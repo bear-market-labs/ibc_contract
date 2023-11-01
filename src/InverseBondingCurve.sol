@@ -321,8 +321,8 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         uint256 returnLiquidity = _calcBurnToken(burnToken);
         _decreaseReserve(returnLiquidity);
 
-        if (!CurveLibrary.valueInRange(returnLiquidity.divDown(burnToken), priceLimits)) {
-            revert PriceOutOfLimit(returnLiquidity.divDown(burnToken), priceLimits);
+        if (!CurveLibrary.valueInRange(returnLiquidity.divDown(inverseTokenIn), priceLimits)) {
+            revert PriceOutOfLimit(returnLiquidity.divDown(inverseTokenIn), priceLimits);
         }
 
         _checkInvariantNotChanged(_virtualInverseTokenSupply() - burnToken);
