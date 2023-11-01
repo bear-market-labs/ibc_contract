@@ -4,7 +4,6 @@ pragma solidity ^0.8.18;
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "oz-upgradeable/proxy/utils/Initializable.sol";
-import "oz-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./interface/IInverseBondingCurve.sol";
@@ -24,7 +23,7 @@ import "./interface/IInverseBondingCurveAdmin.sol";
  * @dev
  * @notice
  */
-contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingCurve {
+contract InverseBondingCurve is Initializable, IInverseBondingCurve {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IInverseBondingCurveToken;
@@ -116,7 +115,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
             adminContract == address(0) || router == address(0) || inverseTokenContract == address(0)
                 || inverseTokenContract == address(0)
         ) revert EmptyAddress();
-        __UUPSUpgradeable_init();
 
         _inverseToken = IInverseBondingCurveToken(inverseTokenContract);
         _reserveToken = IERC20(reserveTokenContract);
@@ -950,14 +948,4 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     function _virtualInverseTokenSupply() private view returns (uint256) {
         return _inverseToken.totalSupply() + _totalLpCreditToken;
     }
-
-    /**
-     * @notice  For contract upgrade
-     * @dev     _authorizeUpgrade is diabled so this contract is not upgradable, the implementation can only be upgraded through admin contract
-     * @param   newImplementation : New contract implementation
-     */
-    function _authorizeUpgrade(address newImplementation) internal pure override {
-        revert();
-    }
-    // ============================================================================================
 }
