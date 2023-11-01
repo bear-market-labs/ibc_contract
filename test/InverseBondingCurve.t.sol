@@ -236,6 +236,41 @@ contract InverseBondingCurveTest is Test {
         assertEqWithError(balanceAfter - balanceBefore, uint256(2e18).mulDown(UINT_ONE.sub(FEE_PERCENT.mulDown(3e18))));
     }
 
+    function testRemoveLiquidityReturnAdditionalToken() public {
+        uint256[2] memory valueRange = [uint256(0),uint256(0)];
+        CurveParameter memory param = curveContract.curveParameters();
+        assertEqWithError(param.price, 1e18);
+
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.buyTokens(recipient, LIQUIDITY_2ETH_BEFOR_FEE, 0, valueRange, valueRange);
+
+        reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
+        reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
+        curveContract.addLiquidity(recipient, LIQUIDITY_2ETH_BEFOR_FEE, valueRange);
+        param = curveContract.curveParameters();
+        uint256 priceBefore = param.price;
+
+        (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(recipient);
+
+        uint256 balanceBefore = reserveToken.balanceOf(otherRecipient);
+        uint256 tokenBalanceBefore = tokenContract.balanceOf(recipient);
+        tokenContract.transfer(address(curveContract), tokenBalanceBefore);
+        curveContract.removeLiquidity(otherRecipient, tokenBalanceBefore, valueRange);
+
+        uint256 balanceAfter = reserveToken.balanceOf(otherRecipient);
+
+        param = curveContract.curveParameters();
+        assertEqWithError(priceBefore, param.price);
+
+        assertEqWithError(tokenContract.balanceOf(otherRecipient), tokenBalanceBefore);
+        assertEqWithError(tokenContract.balanceOf(recipient), 0);
+        (lpBalance, ibcCredit) = curveContract.liquidityPositionOf(recipient);
+        assertEqWithError(lpBalance, 0);
+        assertEqWithError(balanceAfter - balanceBefore, uint256(2e18).mulDown(UINT_ONE.sub(FEE_PERCENT.mulDown(3e18))));
+    }
+
     function testRemoveLiquidityWithAdditionalBurn() public {
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         CurveParameter memory param = curveContract.curveParameters();
@@ -312,7 +347,7 @@ contract InverseBondingCurveTest is Test {
         // Token mint event Transfer(0, recipient, amount)
         address tokenReceiver = address(uint160(uint256(entries[1].topics[2])));
         uint256 mintedToken = abi.decode(entries[1].data, (uint256));
-        assertEq(tokenReceiver, otherRecipient);
+        assertEq(tokenReceiver, address(curveContract));
 
         (uint256 lpBalance, uint256 ibcCredit) = curveContract.liquidityPositionOf(recipient);
 
@@ -321,7 +356,7 @@ contract InverseBondingCurveTest is Test {
 
         uint256 balanceAfter = reserveToken.balanceOf(otherRecipient);
         assertGt(balanceAfter, balanceBefore);
-        assertEq(tokenContract.balanceOf(otherRecipient) - tokenBalanceBefore, mintedToken);
+        assertEqWithError(tokenContract.balanceOf(otherRecipient) - tokenBalanceBefore, mintedToken.mulDown(UINT_ONE.sub(FEE_PERCENT.mulDown(3e18))));
     }
 
     function testBuyTokensExactAmount() public {
@@ -967,17 +1002,18 @@ contract InverseBondingCurveTest is Test {
             curveContract.rewardOf(recipient);
         Vm.Log[] memory entries = vm.getRecordedLogs();
         // Fee mint event Transfer(0, curvecontract, amount)
-        address feeReceiver = address(uint160(uint256(entries[2].topics[2])));
-        uint256 fee = abi.decode(entries[2].data, (uint256));
+        address mintedReceiver = address(uint160(uint256(entries[1].topics[2])));
+        uint256 tokenMinted = abi.decode(entries[1].data, (uint256));
+        uint256 fee = tokenMinted.mulDown(FEE_PERCENT.mulDown(3e18));
 
-        assertEq(feeReceiver, address(curveContract));
+        assertEq(mintedReceiver, address(curveContract));
         assertEq(lpRewardAfter - lpReward, 0);
         assertEq(lpRewardOfRemovalLP, lpRewardOfRemovalLPAfter);
         assertEq(lpReserveRewardOfRemovalLP, lpReserveRewardOfRemovalLPAfter);
 
 
         uint256 tokenBalanceAfter = tokenContract.balanceOf(address(curveContract));
-        assertEq(tokenBalanceAfter - tokenBalanceBefore, fee);
+        assertEqWithError(tokenBalanceAfter - tokenBalanceBefore, fee);
 
         (
             uint256[MAX_FEE_TYPE_COUNT][MAX_FEE_STATE_COUNT] memory totalReward,
