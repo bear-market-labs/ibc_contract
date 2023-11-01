@@ -391,7 +391,7 @@ contract InverseBondingCurveTest is Test {
 
         assertEqWithError(feeBalance, fee);
         vm.startPrank(otherRecipient);
-
+        
 
         tokenContract.transfer(address(curveContract), sellTokenAmount);
         curveContract.sellTokens(otherRecipient, sellTokenAmount, valueRange, valueRange);
@@ -416,6 +416,26 @@ contract InverseBondingCurveTest is Test {
             feeBalance.divDown(3e18).mulDown(lpBalance.divDown(param.lpSupply)), balanceAfter - balanceBefore
         );
         assertEqWithError(tokenContract.balanceOf(address(curveContract)), feeBalance - (balanceAfter - balanceBefore));
+
+        vm.startPrank(otherRecipient);
+        tokenContract.transfer(address(curveContract), tokenOut - sellTokenAmount);
+        curveContract.stake(otherRecipient, tokenOut - sellTokenAmount);
+        vm.stopPrank();
+
+        (, uint256 stakingTokenReward,, uint256 stakingReserveReward) = curveContract.rewardOf(otherRecipient);
+        uint256 accumulatedReserveFee = (LIQUIDITY_2ETH_BEFOR_FEE - 2e18).divDown(3e18);
+        assertEqWithError(feeBalance.divDown(3e18), stakingTokenReward);
+        assertEqWithError(stakingReserveReward, accumulatedReserveFee);
+
+        vm.startPrank(otherRecipient);
+        balanceBefore = tokenContract.balanceOf(otherRecipient);
+        uint256 reserveTokenBefore = reserveToken.balanceOf(otherRecipient);
+        curveContract.claimReward(otherRecipient);
+        balanceAfter = tokenContract.balanceOf(otherRecipient);
+        uint256 reserveTokenAfter = reserveToken.balanceOf(otherRecipient);
+        assertEqWithError(balanceAfter - balanceBefore, stakingTokenReward);
+        assertEqWithError(reserveTokenAfter - reserveTokenBefore, accumulatedReserveFee);
+        vm.stopPrank();
     }
 
     function testClaimRewardFeePortion() public {
