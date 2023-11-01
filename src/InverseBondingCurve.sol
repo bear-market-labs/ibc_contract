@@ -724,7 +724,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         fee = _calcAndUpdateFee(amountOut, true, ActionType.BUY_TOKEN, _feeStates[FEE_IBC_FROM_TRADE]);
         tokenToUser = amountOut;
         totalMint = amountOut + fee;
-        reserve = (_virtualInverseTokenSupply() + totalMint).divDown(_virtualInverseTokenSupply()).powDown(UTILIZATION).mulDown(
+        reserve = (_virtualInverseTokenSupply() + totalMint).divUp(_virtualInverseTokenSupply()).powUp(UTILIZATION).mulUp(
             _curveReserveBalance
         ) - _curveReserveBalance;
     }
