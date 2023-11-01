@@ -31,6 +31,20 @@ contract InverseBondingCurveAdmin is Ownable2Step, Pausable {
     event FeeOwnerChanged(address feeOwner);
 
     /**
+     * @notice  Emitted when router changed
+     * @dev
+     * @param   router : New router address
+     */
+    event RouterChanged(address router);
+
+    /**
+     * @notice  Emitted when curve implementation changed
+     * @dev
+     * @param   implementation : New curve implementation
+     */
+    event CurveImplementationChanged(address implementation);
+
+    /**
      * @notice  Emmitted when fee configuration changed
      * @dev
      * @param   actionType : The action type of the changed fee configuration. (Buy/Sell/Add liquidity/Remove liquidity)
@@ -110,16 +124,20 @@ contract InverseBondingCurveAdmin is Ownable2Step, Pausable {
         if (routerAddress == address(0)) revert EmptyAddress();
 
         _router = routerAddress;
+
+        emit RouterChanged(routerAddress);
     }
 
     /**
      * @notice  Upgrade curve implementation contract
      * @dev     .
-     * @param   newImplementation : New curve contract implementation
+     * @param   implementation : New curve contract implementation
      */
-    function upgradeCurveTo(address newImplementation) external onlyOwner {
-        if (newImplementation == address(0)) revert EmptyAddress();
-        _curveImplementation = newImplementation;
+    function upgradeCurveTo(address implementation) external onlyOwner {
+        if (implementation == address(0)) revert EmptyAddress();
+        _curveImplementation = implementation;
+
+        emit CurveImplementationChanged(implementation);
     }
 
     /**
