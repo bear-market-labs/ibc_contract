@@ -78,15 +78,15 @@ contract InverseBondingCurveFactory {
         address reserveFromAccount,
         address reserveTokenAddress
     ) private {
-        address _cruveContract = _admin.curveImplementation();
+        address _curveContract = _admin.curveImplementation();
 
         InverseBondingCurveToken tokenContract =
-            new InverseBondingCurveToken(address(this), inverseTokenSymbol, inverseTokenSymbol);
+            new InverseBondingCurveToken(inverseTokenSymbol, inverseTokenSymbol);
 
-        address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _cruveContract, ""));
+        address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _curveContract, ""));
         _curveMap[reserveTokenAddress] = proxyContract;
         curves.push(proxyContract);
-        emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, initialReserves);
+        emit CurveCreated(_curveContract, address(tokenContract), proxyContract, initialReserves);
 
         // Initialize Curve contract
         IERC20(reserveTokenAddress).safeTransferFrom(reserveFromAccount, address(proxyContract), initialReserves);

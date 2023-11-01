@@ -30,8 +30,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     using SafeERC20 for IInverseBondingCurveToken;
 
     /// STATE VARIABLES ///
-    address private _protocolFeeOwner;
-
     IInverseBondingCurveToken private _inverseToken;
     IERC20 private _reserveToken;
     IInverseBondingCurveAdmin _adminContract;
@@ -43,8 +41,6 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     // Used to ensure enough token transfered to curve
     uint256 private _reserveBalance;
     uint256 private _inverseTokenBalance;
-
-    //TODO: should add process for ERC20 token decimals
 
     uint256 private _totalLpSupply;
     uint256 private _totalLpCreditToken;
@@ -61,6 +57,13 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         _disableInitializers();
     }
 
+    /**
+     * @dev Modifier to make a function callable only call from protocol fee owner.
+     *
+     * Requirements:
+     *
+     * - send from protocol fee owner.
+     */
     modifier onlyProtocolFeeOwner() {
         if (msg.sender != _adminContract.feeOwner()) {
             revert Unauthorized();

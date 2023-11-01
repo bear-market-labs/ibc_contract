@@ -51,7 +51,7 @@ contract InverseBondingCurveRouterTest is Test {
 
     function testRevertIfDepositToRouter() public {
         vm.expectRevert();
-        address(_router).call{value: 1 ether}('');
+        payable(address(_router)).transfer(1 ether);
     }
 
     function testInteractionWithETHPool() public {
