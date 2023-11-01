@@ -99,6 +99,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
      * @param   router : Router contract address
      * @param   inverseTokenContract : Inverse bonding curve token contract address
      * @param   reserveTokenContract : Reserve token contract address
+     * @param   recipient: Recipient address to hold LP position
      * @param   reserve : Reserve amount
      */
     function initialize(
@@ -111,7 +112,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     ) external initializer {
         if (
             adminContract == address(0) || router == address(0) || inverseTokenContract == address(0)
-                || inverseTokenContract == address(0)
+                || reserveTokenContract == address(0) || recipient == address(0)
         ) revert EmptyAddress();
         __UUPSUpgradeable_init();
 
