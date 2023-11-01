@@ -69,17 +69,19 @@ interface IInverseBondingCurve {
      * @notice  Emitted when token staked
      * @dev
      * @param   from : Staked from account
+     * @param   recipient : Account to stake for, the staked token holder will be changed to recipient
      * @param   amount : Staked token amount
      */
-    event TokenStaked(address indexed from, uint256 amount);
+    event TokenStaked(address indexed from, address indexed recipient, uint256 amount);
 
     /**
      * @notice  Emitted when token unstaked
      * @dev
      * @param   from : Unstaked from account
+     * @param   recipient : Account to receive the unstaked IBC token
      * @param   amount : Unstaked token amount
      */
-    event TokenUnstaked(address indexed from, uint256 amount);
+    event TokenUnstaked(address indexed from, address indexed recipient, uint256 amount);
 
     /**
      * @notice  Emitted when token bought by user
