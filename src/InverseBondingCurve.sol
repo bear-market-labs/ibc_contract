@@ -493,14 +493,14 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     }
 
     /**
-     * @notice  Query EMA(exponential moving average) reward per block
+     * @notice  Query EMA(exponential moving average) reward per second
      * @dev
      * @param   rewardType : Reward type: LP or staking
-     * @return  inverseTokenReward : EMA IBC token reward per block
-     * @return  reserveReward : EMA reserve reward per block
+     * @return  inverseTokenReward : EMA IBC token reward per second
+     * @return  reserveReward : EMA reserve reward per second
      */
-    function blockRewardEMA(RewardType rewardType) external view returns (uint256 inverseTokenReward, uint256 reserveReward) {
-        (inverseTokenReward, reserveReward) = CurveLibrary.calcBlockRewardEMA(_feeStates, rewardType);
+    function rewardEMAPerSecond(RewardType rewardType) external view returns (uint256 inverseTokenReward, uint256 reserveReward) {
+        (inverseTokenReward, reserveReward) = CurveLibrary.calcRewardEMA(_feeStates, rewardType);
     }
 
     /**

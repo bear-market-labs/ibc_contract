@@ -85,8 +85,9 @@ library CurveLibrary {
      * @param   feeState : Fee state storage
      */
     function initializeRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState) public {
-        feeState[FEE_IBC_FROM_TRADE].emaRewardUpdateBlockNumber = block.number;
-        feeState[FEE_RESERVE].emaRewardUpdateBlockNumber = block.number;
+        feeState[FEE_IBC_FROM_TRADE].emaRewardUpdateBlockTimestamp = block.timestamp;
+        feeState[FEE_RESERVE].emaRewardUpdateBlockTimestamp = block.timestamp;
+        feeState[FEE_IBC_FROM_LP].emaRewardUpdateBlockTimestamp = block.timestamp;
     }
 
     /**
@@ -95,7 +96,7 @@ library CurveLibrary {
      * @param   feeState : Fee state storage
      */
     function updateRewardEMA(FeeState storage feeState) public {
-        if (block.number != feeState.emaRewardUpdateBlockNumber) {
+        if (block.timestamp != feeState.emaRewardUpdateBlockTimestamp) {
             uint256 alpha = _calcParameterAlpha(feeState);
             uint256 lpRewardEMA = _calcEMA(feeState, RewardType.LP, alpha);
             uint256 stakingRewardEMA = _calcEMA(feeState, RewardType.STAKING, alpha);
@@ -104,7 +105,7 @@ library CurveLibrary {
             feeState.previousReward[REWARD_STAKE] = feeState.totalReward[REWARD_STAKE];
             feeState.emaReward[REWARD_LP] = lpRewardEMA;
             feeState.emaReward[REWARD_STAKE] = stakingRewardEMA;
-            feeState.emaRewardUpdateBlockNumber = block.number;
+            feeState.emaRewardUpdateBlockTimestamp = block.timestamp;
         }
     }
 
@@ -113,10 +114,10 @@ library CurveLibrary {
      * @dev
      * @param   feeState : Fee state storage
      * @param   rewardType : LP or Staking
-     * @return  inverseTokenReward : EMA IBC token reward per block
-     * @return  reserveReward : EMA reserve reward per block
+     * @return  inverseTokenReward : EMA IBC token reward per second
+     * @return  reserveReward : EMA reserve reward per second
      */
-    function calcBlockRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState, RewardType rewardType)
+    function calcRewardEMA(FeeState[MAX_FEE_TYPE_COUNT] storage feeState, RewardType rewardType)
         public
         view
         returns (uint256 inverseTokenReward, uint256 reserveReward)
@@ -180,7 +181,7 @@ library CurveLibrary {
      * @return  alpha : Parameter alpha
      */
     function _calcParameterAlpha(FeeState storage feeState) private view returns (uint256 alpha) {
-        int256 exponent = int256((block.number - feeState.emaRewardUpdateBlockNumber).divDown(DAILY_BLOCK_COUNT));
+        int256 exponent = int256(((block.timestamp - feeState.emaRewardUpdateBlockTimestamp) * UINT_ONE).divDown(SECONDS_PER_DAY));
         alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? UINT_ONE : UINT_ONE - uint256(LogExpMath.exp(-exponent));
     }
 
@@ -193,17 +194,17 @@ library CurveLibrary {
      * @return  rewardEMA : Reward EMA
      */
     function _calcEMA(FeeState storage feeState, RewardType rewardType, uint256 alpha) private view returns (uint256 rewardEMA) {
-        if (block.number > feeState.emaRewardUpdateBlockNumber) {
-            uint256 pastBlockCount = block.number - feeState.emaRewardUpdateBlockNumber;
+        if (block.timestamp > feeState.emaRewardUpdateBlockTimestamp) {
+            uint256 pastTimeperiod = block.timestamp - feeState.emaRewardUpdateBlockTimestamp;
             uint256 previousEMA = feeState.emaReward[uint256(rewardType)];
-            uint256 rewardSinceLastUpdatePerBlock = (
+            uint256 rewardSinceLastUpdatePerSecond = (
                 feeState.totalReward[uint256(rewardType)] - feeState.previousReward[uint256(rewardType)]
-            ).divDown(pastBlockCount * 1e18);
+            ).divDown(pastTimeperiod * UINT_ONE);
 
-            if (rewardSinceLastUpdatePerBlock >= previousEMA) {
-                rewardEMA = previousEMA + (alpha.mulDown(rewardSinceLastUpdatePerBlock - previousEMA));
+            if (rewardSinceLastUpdatePerSecond >= previousEMA) {
+                rewardEMA = previousEMA + (alpha.mulDown(rewardSinceLastUpdatePerSecond - previousEMA));
             } else {
-                rewardEMA = previousEMA - (alpha.mulDown(previousEMA - rewardSinceLastUpdatePerBlock));
+                rewardEMA = previousEMA - (alpha.mulDown(previousEMA - rewardSinceLastUpdatePerSecond));
             }
         } else {
             rewardEMA = feeState.emaReward[uint256(rewardType)];

@@ -10,7 +10,7 @@ struct FeeState {
     uint256[MAX_FEE_STATE_COUNT] globalFeeIndexes;
     uint256[MAX_FEE_STATE_COUNT] totalReward;
     uint256[MAX_FEE_STATE_COUNT] totalPendingReward;
-    uint256 emaRewardUpdateBlockNumber;
+    uint256 emaRewardUpdateBlockTimestamp;
     uint256[MAX_EMA_STATE_COUNT] emaReward;
     uint256[MAX_EMA_STATE_COUNT] previousReward;
 }
