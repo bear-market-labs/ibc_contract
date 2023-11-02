@@ -75,7 +75,7 @@ contract MockAdmin is IInverseBondingCurveAdmin {
         return _router;
     }
 
-    function weth() external view returns (address){
+    function weth() external pure returns (address){
         return address(0);
     }
 
@@ -83,7 +83,7 @@ contract MockAdmin is IInverseBondingCurveAdmin {
         return _curveImplementation;
     }
 
-    function owner() external view returns (address){
+    function owner() external pure returns (address){
         return address(0);
     }
 }
@@ -153,7 +153,7 @@ contract InverseBondingCurveTest is Test {
 
         adminContract = new MockAdmin(feeOwner, router);
 
-        InverseBondingCurve curveContractImpl = new InverseBondingCurve();
+        curveContractImpl = new InverseBondingCurve();
         adminContract.upgradeCurveTo(address(curveContractImpl));
 
         curveContract = InverseBondingCurve(address(new InverseBondingCurveProxy(address(adminContract), address(curveContractImpl), "")));
@@ -180,8 +180,8 @@ contract InverseBondingCurveTest is Test {
         (uint256 deadLpBalance, uint256 deadIbcCredit) = curveContract.liquidityPositionOf(deadAccount);
         console2.log("lpBalance", lpBalance);
         console2.log("deadLpBalance", deadLpBalance);
-        assertEqWithError(deadLpBalance, 0);
-        assertEqWithError(deadIbcCredit, 0);
+        assertEqWithError(deadLpBalance, lpBalance / 1e4);
+        assertEqWithError(deadIbcCredit, ibcCredit / 1e4);
         assertEq(param.reserve, 2e18);
         assertEq(param.supply, 1e18);
         assertEq(tokenContract.totalSupply(), 0);
@@ -478,7 +478,6 @@ contract InverseBondingCurveTest is Test {
     function testClaimRewardFeePortion() public {
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         uint256 buyLiquidity = 1e18;
-        uint256 sellTokenAmount = 1e18;
 
         reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
         reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
@@ -584,7 +583,6 @@ contract InverseBondingCurveTest is Test {
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         address thirdRecipient = vm.addr(3);
         uint256 buyLiquidity = 2e19;
-        uint256 sellTokenAmount = 1e18;
         
         vm.deal(otherRecipient, 1000 ether);
         vm.deal(thirdRecipient, 1000 ether);
@@ -685,7 +683,6 @@ contract InverseBondingCurveTest is Test {
     function testUnstake() public {
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         uint256 buyLiquidity = 2e18;
-        uint256 buyToken = 2e18;
 
         reserveToken.mint(recipient, buyLiquidity);
         reserveToken.transfer(address(curveContract), buyLiquidity);
@@ -708,7 +705,6 @@ contract InverseBondingCurveTest is Test {
     function testUnstakeForOtherRecipient() public {
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         uint256 buyLiquidity = 2e18;
-        uint256 buyToken = 2e18;
 
         reserveToken.mint(recipient, buyLiquidity);
         reserveToken.transfer(address(curveContract), buyLiquidity);
@@ -876,7 +872,6 @@ contract InverseBondingCurveTest is Test {
     function testRevertIfPriceOutOfLimitWhenBuyToken() public {
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         uint256 buyLiquidity = 1e18;
-        uint256 sellTokenAmount = 1e18;
 
         reserveToken.mint(recipient, buyLiquidity);
         reserveToken.transfer(address(curveContract), buyLiquidity);
@@ -953,7 +948,6 @@ contract InverseBondingCurveTest is Test {
         uint256[2] memory reserveRange = [uint256(0),uint256(0)];
 
         uint256 buyLiquidity = 1e18;
-        uint256 sellTokenAmount = 1e18;
 
         reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
         reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
@@ -963,7 +957,6 @@ contract InverseBondingCurveTest is Test {
         reserveToken.mint(recipient, buyLiquidity);
         reserveToken.transfer(address(curveContract), buyLiquidity);
         curveContract.buyTokens(recipient, buyLiquidity, 0, priceRange, reserveRange);
-        CurveParameter memory param = curveContract.curveParameters();
 
         uint256 tokenBalanceBefore = tokenContract.balanceOf(recipient);
         tokenContract.transfer(address(curveContract), tokenBalanceBefore);
@@ -1006,7 +999,6 @@ contract InverseBondingCurveTest is Test {
         uint256[2] memory reserveRange = [uint256(0),uint256(0)];
 
         uint256 buyLiquidity = 1e18;
-        uint256 sellTokenAmount = 1e18;
 
         reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
         reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
@@ -1096,7 +1088,6 @@ contract InverseBondingCurveTest is Test {
         uint256[2] memory reserveRange = [uint256(0),uint256(0)];
 
         uint256 buyLiquidity = 1e18;
-        uint256 sellTokenAmount = 1e18;
 
         reserveToken.mint(recipient, LIQUIDITY_2ETH_BEFOR_FEE);
         reserveToken.transfer(address(curveContract), LIQUIDITY_2ETH_BEFOR_FEE);
@@ -1143,6 +1134,9 @@ contract InverseBondingCurveTest is Test {
             totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], addLiquidityFee.divDown(3e18)
         );
 
+        uint256 reserveRewardToDead = addLiquidityFee.divDown(3e18)/1e4;
+        CurveParameter memory param = curveContract.curveParameters();
+
         reserveToken.mint(recipient, buyLiquidity);
         reserveToken.transfer(address(curveContract), buyLiquidity);
         curveContract.buyTokens(otherRecipient, buyLiquidity, 0, priceRange, reserveRange);
@@ -1151,6 +1145,9 @@ contract InverseBondingCurveTest is Test {
         uint256 fee = (tokenOut * feePercent) / (1e18 - feePercent);
 
         (totalReward, totalPendingReward) = curveContract.rewardState();
+
+        // dead lp amount 1e14
+        uint256 ibcRewardToDead = fee.divDown(3e18).mulDown(1e14).divDown(param.lpSupply);
 
         assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], fee.divDown(3e18));
         assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
@@ -1194,6 +1191,8 @@ contract InverseBondingCurveTest is Test {
         curveContract.addLiquidity(otherRecipient, LIQUIDITY_2ETH_BEFOR_FEE, priceRange);
 
         (totalReward, totalPendingReward) = curveContract.rewardState();
+
+        reserveRewardToDead += addLiquidityFee.divDown(3e18).mulDown(1e14).divDown(param.lpSupply);
 
         assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], fee.divDown(3e18));
         assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
@@ -1255,7 +1254,7 @@ contract InverseBondingCurveTest is Test {
         assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], fee.divDown(3e18));
         assertEqWithError(totalReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], fee.divDown(3e18));
 
-        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.LP)], ibcRewardToDead);
         assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.STAKING)], 0);
         assertEqWithError(totalPendingReward[uint256(FeeType.IBC_FROM_TRADE)][uint256(RewardType.PROTOCOL)], 0);
 
@@ -1271,7 +1270,7 @@ contract InverseBondingCurveTest is Test {
             addLiquidityFee.divDown(3e18).mulDown(2e18)
         );
 
-        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], 0);
+        assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.LP)], reserveRewardToDead);
         assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.STAKING)], 0);
         assertEqWithError(totalPendingReward[uint256(FeeType.RESERVE)][uint256(RewardType.PROTOCOL)], 0);
     }

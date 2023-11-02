@@ -123,6 +123,10 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
         _adminContract = IInverseBondingCurveAdmin(adminContract);
         _router = router;
 
+        // Make sure deduction portion bigger enough
+        if(reserve / INITIAL_RESERVE_DEDUCTION_DIVIDER < MIN_RESERVE_DEDUCTION){
+            revert InputAmountTooSmall(CurveLibrary.scaleFrom(reserve, _reserveTokenDecimal));
+        }
         _checkPayment(_reserveToken, 0, reserve);
         reserve = CurveLibrary.scaleFrom(reserve, _reserveTokenDecimal);
         if (reserve < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(reserve);
@@ -134,8 +138,8 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
 
         uint256 lpTokenAmount = price.mulDown(_curveReserveBalance - (price.mulDown(supply)));
 
-        uint256 tokenToDead = supply * INITIAL_RESERVE_DEDUCTION / _curveReserveBalance;
-        uint256 lpToDead = lpTokenAmount * INITIAL_RESERVE_DEDUCTION / _curveReserveBalance;
+        uint256 tokenToDead = supply / INITIAL_RESERVE_DEDUCTION_DIVIDER;
+        uint256 lpToDead = lpTokenAmount / INITIAL_RESERVE_DEDUCTION_DIVIDER;
 
         _invariant = _curveReserveBalance.divDown(supply.powDown(UTILIZATION));
 

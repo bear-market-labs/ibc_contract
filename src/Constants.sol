@@ -2,7 +2,8 @@
 pragma solidity ^0.8.18;
 
 uint256 constant MIN_INPUT_AMOUNT = 1e14; // 0.0001
-uint256 constant INITIAL_RESERVE_DEDUCTION = 1e8;
+uint256 constant MIN_RESERVE_DEDUCTION = 1e3;
+uint256 constant INITIAL_RESERVE_DEDUCTION_DIVIDER = 1e4;
 uint256 constant DEFAULT_DECIMALS = 18;
 uint256 constant UINT_ONE = 1e18;
 uint256 constant UINT_TWO = 2e18;
