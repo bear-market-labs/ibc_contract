@@ -642,7 +642,6 @@ contract InverseBondingCurveTest is Test {
 
         uint256[2] memory valueRange = [uint256(0),uint256(0)];
         uint256 buyLiquidity = 2e18;
-        uint256 buyToken = 2e18;
 
         reserveToken.mint(recipient, buyLiquidity);
         reserveToken.transfer(address(curveContract), buyLiquidity);
@@ -657,6 +656,27 @@ contract InverseBondingCurveTest is Test {
 
         assertEq(tokenContract.balanceOf(recipient), 0);
         assertEq(curveContract.stakingBalanceOf(recipient), stakeAmount);
+        assertEq(curveContract.totalStaked(), stakeAmount);
+    }
+
+    function testStakeForOtherRecipient() public {
+
+        uint256[2] memory valueRange = [uint256(0),uint256(0)];
+        uint256 buyLiquidity = 2e18;
+
+        reserveToken.mint(recipient, buyLiquidity);
+        reserveToken.transfer(address(curveContract), buyLiquidity);
+        curveContract.buyTokens(recipient, buyLiquidity, 0, valueRange, valueRange);
+
+
+        uint256 stakeAmount = tokenContract.balanceOf(recipient);
+        assertEq(curveContract.stakingBalanceOf(recipient), 0);
+
+        tokenContract.transfer(address(curveContract), stakeAmount);
+        curveContract.stake(otherRecipient, stakeAmount);
+
+        assertEq(tokenContract.balanceOf(recipient), 0);
+        assertEq(curveContract.stakingBalanceOf(otherRecipient), stakeAmount);
         assertEq(curveContract.totalStaked(), stakeAmount);
     }
 
@@ -680,6 +700,29 @@ contract InverseBondingCurveTest is Test {
 
         curveContract.unstake(recipient, stakeAmount);
         assertEq(tokenContract.balanceOf(recipient), stakeAmount);
+        assertEq(curveContract.stakingBalanceOf(recipient), 0);
+    }
+
+    function testUnstakeForOtherRecipient() public {
+        uint256[2] memory valueRange = [uint256(0),uint256(0)];
+        uint256 buyLiquidity = 2e18;
+        uint256 buyToken = 2e18;
+
+        reserveToken.mint(recipient, buyLiquidity);
+        reserveToken.transfer(address(curveContract), buyLiquidity);
+        curveContract.buyTokens(recipient, buyLiquidity, 0, valueRange, valueRange);
+
+
+        uint256 stakeAmount = tokenContract.balanceOf(recipient);
+        assertEq(curveContract.stakingBalanceOf(recipient), 0);
+
+        tokenContract.transfer(address(curveContract), stakeAmount);
+        curveContract.stake(recipient, stakeAmount);
+        assertEq(tokenContract.balanceOf(recipient), 0);
+        assertEq(curveContract.stakingBalanceOf(recipient), stakeAmount);
+
+        curveContract.unstake(otherRecipient, stakeAmount);
+        assertEq(tokenContract.balanceOf(otherRecipient), stakeAmount);
         assertEq(curveContract.stakingBalanceOf(recipient), 0);
     }
 
@@ -802,12 +845,20 @@ contract InverseBondingCurveTest is Test {
         uint256 reserveBalanceBefore = reserveToken.balanceOf(otherRecipient);
         uint256 tokenBalanceBefore = tokenContract.balanceOf(otherRecipient);
 
+        curveContract.unstake(recipient, 1e18);
+
         curveContract.claimReward(otherRecipient);
 
         uint256 reserveBalanceAfter = reserveToken.balanceOf(otherRecipient);
         uint256 tokenBalanceAfter = tokenContract.balanceOf(otherRecipient);
         assertEq(reserveBalanceAfter - reserveBalanceBefore, reserveForStaking);
         assertEq(tokenBalanceAfter - tokenBalanceBefore, inverseTokenForStaking);
+
+        (inverseTokenForLp, inverseTokenForStaking, reserveForLp, reserveForStaking) =
+            curveContract.rewardOf(recipient);
+
+        assertEq(inverseTokenForStaking, 0);
+        assertEq(reserveForStaking, 0);
 
         vm.stopPrank();
     }

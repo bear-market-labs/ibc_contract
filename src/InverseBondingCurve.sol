@@ -343,18 +343,17 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
      */
     function stake(address recipient, uint256 amount) external whenNotPaused {
         if (amount < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(amount);
-        address sourceAccount = _getSourceAccount(recipient);
 
         _checkPayment(_inverseToken, _inverseTokenBalance, amount);
         _inverseTokenBalance += amount;
 
-        _updateStakingReward(sourceAccount);
+        _updateStakingReward(recipient);
 
-        _rewardFirstStaker(sourceAccount);
-        _stakingBalances[sourceAccount] += amount;
+        _rewardFirstStaker(recipient);
+        _stakingBalances[recipient] += amount;
         _totalStaked += amount;
 
-        emit TokenStaked(sourceAccount, amount);
+        emit TokenStaked(msg.sender, recipient, amount);
     }
 
     /**
@@ -364,6 +363,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
      */
     function unstake(address recipient, uint256 amount) external whenNotPaused {
         address sourceAccount = _getSourceAccount(recipient);
+        address targetAccount = _getTargetAccount(recipient);
         if (_stakingBalances[sourceAccount] < amount) revert InsufficientBalance();
         if (amount < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(amount);
 
@@ -371,8 +371,8 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
         _stakingBalances[sourceAccount] -= amount;
         _totalStaked -= amount;
 
-        emit TokenUnstaked(sourceAccount, amount);
-        _transferInverseToken(sourceAccount, amount);
+        emit TokenUnstaked(msg.sender, targetAccount, amount);
+        _transferInverseToken(targetAccount, amount);
     }
 
     /**
