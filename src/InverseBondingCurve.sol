@@ -129,12 +129,12 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
 
         _curveReserveBalance = reserve;
         uint256 price = UINT_TWO.divDown(_curveReserveBalance);
-        uint256 supply = _curveReserveBalance.mulDown(_curveReserveBalance).divDown(UINT_FOUR);
+        uint256 supply = _curveReserveBalance * _curveReserveBalance / UINT_FOUR;
 
         uint256 lpTokenAmount = price.mulDown(_curveReserveBalance - (price.mulDown(supply)));
 
-        uint256 tokenToDead = supply.mulDown(INITIAL_RESERVE_DEDUCTION).divDown(_curveReserveBalance);
-        uint256 lpToDead = lpTokenAmount.mulDown(INITIAL_RESERVE_DEDUCTION).divDown(_curveReserveBalance);
+        uint256 tokenToDead = supply * INITIAL_RESERVE_DEDUCTION / _curveReserveBalance;
+        uint256 lpToDead = lpTokenAmount * INITIAL_RESERVE_DEDUCTION / _curveReserveBalance;
 
         _invariant = _curveReserveBalance.divDown(supply.powDown(UTILIZATION));
 
@@ -796,7 +796,7 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
      * @dev     Revert if changed
      */
     function _checkUtilizationNotChanged() private view {
-        uint256 utilization = _currentPrice().mulDown(_virtualInverseTokenSupply()).divDown(_curveReserveBalance);
+        uint256 utilization = _currentPrice() * _virtualInverseTokenSupply() / _curveReserveBalance;
         if (CurveLibrary.valueChanged(UTILIZATION, utilization, MAX_UTIL_CHANGE)) revert UtilizationChanged(utilization);
     }
 
@@ -852,8 +852,8 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
      * @return  inverseTokenCredit : Virtual IBC token credited to LP
      */
     function _calcLpAddition(uint256 reserveAdded) private view returns (uint256 mintToken, uint256 inverseTokenCredit) {
-        mintToken = reserveAdded.mulDown(_totalLpSupply).divDown(_curveReserveBalance);
-        inverseTokenCredit = reserveAdded.mulDown(_virtualInverseTokenSupply()).divDown(_curveReserveBalance);
+        mintToken = reserveAdded * _totalLpSupply / _curveReserveBalance;
+        inverseTokenCredit = reserveAdded * _virtualInverseTokenSupply() / _curveReserveBalance;
     }
 
     /**
@@ -868,8 +868,8 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
         view
         returns (uint256 reserveRemoved, uint256 inverseTokenBurned)
     {
-        reserveRemoved = burnLpTokenAmount.mulDown(_curveReserveBalance).divDown(_totalLpSupply);
-        inverseTokenBurned = burnLpTokenAmount.mulDown(_virtualInverseTokenSupply()).divDown(_totalLpSupply);
+        reserveRemoved = burnLpTokenAmount * _curveReserveBalance / _totalLpSupply;
+        inverseTokenBurned = burnLpTokenAmount * _virtualInverseTokenSupply() / _totalLpSupply;
         if (reserveRemoved > _curveReserveBalance) revert InsufficientBalance();
     }
 
@@ -893,8 +893,8 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
             uint256 totalFeePercent = lpFeePercent + stakeFeePercent + protocolFeePercent;
             uint256 amountBeforeFee = amount.divDown(UINT_ONE - totalFeePercent);
             uint256 totalFee = amountBeforeFee - amount;
-            lpFee = totalFee.mulDown(lpFeePercent).divDown(totalFeePercent);
-            stakingFee = totalFee.mulDown(stakeFeePercent).divDown(totalFeePercent);
+            lpFee = totalFee * lpFeePercent / totalFeePercent;
+            stakingFee = totalFee * stakeFeePercent / totalFeePercent;
             protocolFee = totalFee - lpFee - stakingFee;
         } else {
             lpFee = amount.mulDown(lpFeePercent);
@@ -910,7 +910,7 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
      * @return  uint256 : Price at current supply
      */
     function _currentPrice() private view returns (uint256) {
-        return UTILIZATION.mulDown(_curveReserveBalance).divDown(_virtualInverseTokenSupply());
+        return UTILIZATION * _curveReserveBalance / _virtualInverseTokenSupply();
     }
 
     /**
