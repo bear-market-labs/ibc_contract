@@ -137,8 +137,8 @@ contract InverseBondingCurveRouterTest is Test {
         reserveToken.approve(address(_factoryContract), initialReserve);
 
         _factoryContract.createCurve(initialReserve, address(reserveToken), address(this));
-
         address poolAddress = _factoryContract.getCurve(address(reserveToken));
+
         IInverseBondingCurve curveContract = IInverseBondingCurve(poolAddress);
         InverseBondingCurveToken inverseToken = InverseBondingCurveToken(curveContract.inverseTokenAddress());
 
@@ -203,4 +203,95 @@ contract InverseBondingCurveRouterTest is Test {
 
         vm.stopPrank();
     }
+
+    // function testInteractionWithERC20PoolEdgeCase() public {
+    //     uint256 initialReserve = 1;
+    //     uint256 buyReserve = 2e6;
+    //     ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 4);
+
+    //     reserveToken.mint(address(this), initialReserve);
+    //     reserveToken.approve(address(_factoryContract), initialReserve);
+
+    //     _factoryContract.createCurve(initialReserve, address(reserveToken), address(this));
+
+    //     address poolAddress = _factoryContract.getCurve(address(reserveToken));
+
+
+
+    //     IInverseBondingCurve curveContract = IInverseBondingCurve(poolAddress);
+    //     InverseBondingCurveToken inverseToken = InverseBondingCurveToken(curveContract.inverseTokenAddress());
+
+    //     bytes memory data = abi.encode(recipient, inverseToken.balanceOf(address(this)), [0, 0]);
+    //     _router.execute(address(this), poolAddress, false, CommandType.REMOVE_LIQUIDITY, data);
+
+    //     console2.log('after remove liquidity');
+    //     console2.log('curve balance:', reserveToken.balanceOf(poolAddress));
+
+    //     CurveParameter memory param = curveContract.curveParameters();
+    //     console2.log("  reserve:", param.reserve);
+    //     console2.log("  supply:", param.supply);
+    //     console2.log("  price:", param.price);
+    //     console2.log("  lpSupply:", param.lpSupply);
+
+    //     reserveToken.mint(recipient, 1e8);
+    //     vm.startPrank(recipient);
+    //     // Add liquidity
+    //     data = abi.encode(recipient, LIQUIDITY_2USDC_BEFOR_FEE, [0, 0]);
+    //     reserveToken.approve(address(_router), LIQUIDITY_2USDC_BEFOR_FEE);
+    //     _router.execute(recipient, poolAddress, false, CommandType.ADD_LIQUIDITY, data);
+
+    //     (uint256 lpPosition, uint256 creditToken) = curveContract.liquidityPositionOf(recipient);
+    //     assertEqWithError(lpPosition, 1e18);
+    //     assertEqWithError(creditToken, 1e18);
+    //     assertEqWithError(reserveToken.balanceOf(address(poolAddress)), LIQUIDITY_2USDC_BEFOR_FEE + initialReserve);
+    //     console2.log("add liquidity", lpPosition);
+
+    //     // Buy token
+    //     data = abi.encode(recipient, buyReserve, 0, [0, 0], [0, 0]);
+    //     uint256 tokenBalanceBefore = inverseToken.balanceOf(recipient);
+    //     reserveToken.approve(address(_router), buyReserve);
+    //     _router.execute(recipient, poolAddress, false, CommandType.BUY_TOKEN, data);
+    //     uint256 boughtToken = inverseToken.balanceOf(recipient) - tokenBalanceBefore;
+    //     assertGt(boughtToken, 0);
+    //     console2.log("boughtToken", boughtToken);
+
+    //     // Stake token
+    //     tokenBalanceBefore = inverseToken.balanceOf(recipient);
+    //     data = abi.encode(recipient, tokenBalanceBefore);
+
+    //     inverseToken.approve(address(_router), tokenBalanceBefore);
+    //     _router.execute(recipient, poolAddress, false, CommandType.STAKE, data);
+    //     assertEq(inverseToken.balanceOf(recipient), 0);
+    //     console2.log("stake success");
+
+    //     // Unstake token
+    //     data = abi.encode(recipient, tokenBalanceBefore);
+    //     _router.execute(recipient, poolAddress, false, CommandType.UNSTAKE, data);
+    //     assertEq(inverseToken.balanceOf(recipient), tokenBalanceBefore);
+    //     console2.log("unstake success");
+
+    //     // Sell token
+    //     data = abi.encode(recipient, boughtToken / 2, [0, 0], [0, 0]);
+    //     uint256 reserveBalanceBefore = reserveToken.balanceOf(recipient);
+    //     inverseToken.approve(address(_router), boughtToken);
+    //     _router.execute(recipient, poolAddress, false, CommandType.SELL_TOKEN, data);
+    //     assertGt(reserveToken.balanceOf(recipient), reserveBalanceBefore);
+    //     console2.log("sell liquidity:", reserveToken.balanceOf(recipient) - reserveBalanceBefore);
+
+    //     // // Remove liquidity
+    //     // data = abi.encode(recipient, inverseToken.balanceOf(recipient), [0, 0]);
+    //     // reserveBalanceBefore = reserveToken.balanceOf(recipient);
+    //     // _router.execute(recipient, poolAddress, false, CommandType.REMOVE_LIQUIDITY, data);
+    //     // assertGt(reserveToken.balanceOf(recipient), reserveBalanceBefore);
+    //     // console2.log("remove liquidity:", reserveToken.balanceOf(recipient) - reserveBalanceBefore);
+
+    //     // Claim reward
+    //     data = abi.encode(recipient);
+    //     tokenBalanceBefore = inverseToken.balanceOf(recipient);
+    //     _router.execute(recipient, poolAddress, false, CommandType.CLAIM_REWARD, data);
+    //     assertGt(inverseToken.balanceOf(recipient), tokenBalanceBefore);
+    //     console2.log("claim reward:", inverseToken.balanceOf(recipient) - tokenBalanceBefore);
+
+    //     vm.stopPrank();
+    // }
 }
