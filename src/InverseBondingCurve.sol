@@ -745,7 +745,7 @@ contract InverseBondingCurve is Initializable, UUPSUpgradeable, IInverseBondingC
     function _rewardFirstStaker(address account, FeeType feeType) private {
         FeeState storage state = _feeStates[uint256(feeType)];
         if (state.feeForFirstStaker > 0) {
-            state.pendingRewards[REWARD_STAKE][account] = state.feeForFirstStaker;
+            state.pendingRewards[REWARD_STAKE][account] += state.feeForFirstStaker;
             state.feeForFirstStaker = 0;
         }
     } 
