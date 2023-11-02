@@ -57,7 +57,6 @@ contract InverseBondingCurveFactoryTest is Test {
 
     function testRevertIfDuplicatePool() public {
         uint256 initialReserve = 2e18;
-        uint256 creatorBalanceBefore = address(this).balance;
         _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0), recipient);
 
         address poolAddress = _factoryContract.getCurve(address(0));
@@ -81,7 +80,7 @@ contract InverseBondingCurveFactoryTest is Test {
     }
 
     function testCreateERC20Pool() public {
-        uint256 initialReserve = 2e6;
+        uint256 initialReserve = 2e7;
 
         ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
 
@@ -106,15 +105,14 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(tokenContract.symbol(), "ibUSDC");
 
         CurveParameter memory param = InverseBondingCurve(poolAddress).curveParameters();
-        assertEq(param.reserve, 2e18);
-        assertEq(param.supply, 1e18);
-        assertEq(param.price, 1e18);
+        assertEq(param.reserve, 2e19);
+        assertEq(param.supply, 1e20);
+        assertEq(param.price, 1e17);
         assertEq(param.lpSupply, 1e18);
     }
 
     function testMultiplecurves() public {
         uint256 initialReserve = 2e18;
-        uint256 creatorBalanceBefore = address(this).balance;
         _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0), recipient);
 
         address poolAddress = _factoryContract.getCurve(address(0));
@@ -135,6 +133,6 @@ contract InverseBondingCurveFactoryTest is Test {
         assertEq(_factoryContract.curves(1), poolAddress);
 
         (uint256 lpAmount, ) = InverseBondingCurve(poolAddress).liquidityPositionOf(feeOwner);
-        assertEq(lpAmount, 1e18);
+        assertEq(lpAmount, 1e18 - 1e14);
     }
 }

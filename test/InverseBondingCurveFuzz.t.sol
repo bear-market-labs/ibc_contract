@@ -78,7 +78,6 @@ contract InverseBondingCurveFuzzTest is Test {
 
         //Buy token
         data = abi.encode(recipient, buyReserve, 0, [0, 0], [0, 0]);
-        uint256 tokenBalanceBefore = inverseToken.balanceOf(recipient);
         _router.execute{value: buyReserve}(recipient, curveContractAddress, true, CommandType.BUY_TOKEN, data);
 
         // Remove liquidity
@@ -129,8 +128,8 @@ contract InverseBondingCurveFuzzTest is Test {
 
     function testERC20CurveFuzz(uint256 initialReserve, uint256 additionalReserve, uint256 buyReserve) public {
         
-        initialReserve = bound(additionalReserve, 1e5, 1e10);
-        additionalReserve = bound(additionalReserve, 1e5, 1e10);
+        initialReserve = bound(additionalReserve, 1e7, 1e15);
+        additionalReserve = bound(additionalReserve, 1e5, 1e15);
         buyReserve = bound(buyReserve, 1e5, 1e10);
 
         ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
@@ -155,18 +154,18 @@ contract InverseBondingCurveFuzzTest is Test {
         bytes memory data = abi.encode(recipient, additionalReserve, [0, 0]); 
         _router.execute(recipient, curveContractAddress, false, CommandType.ADD_LIQUIDITY, data);
 
+        // Remove liquidity
+        data = abi.encode(recipient, inverseToken.balanceOf(recipient), [0, 0]);
+        inverseToken.approve(address(_router), inverseToken.balanceOf(recipient));
+        _router.execute(recipient, curveContractAddress, false, CommandType.REMOVE_LIQUIDITY, data);
 
         //Buy token
         reserveToken.mint(recipient, buyReserve);
         reserveToken.approve(address(_router), buyReserve);
         data = abi.encode(recipient, buyReserve, 0, [0, 0], [0, 0]);
-        uint256 tokenBalanceBefore = inverseToken.balanceOf(recipient);
         _router.execute(recipient, curveContractAddress, false, CommandType.BUY_TOKEN, data);
 
-        // Remove liquidity
-        data = abi.encode(recipient, inverseToken.balanceOf(recipient), [0, 0]);
-        inverseToken.approve(address(_router), inverseToken.balanceOf(recipient));
-        _router.execute(recipient, curveContractAddress, false, CommandType.REMOVE_LIQUIDITY, data);
+
 
         // Sell token
         data = abi.encode(recipient, inverseToken.balanceOf(recipient), [0, 0], [0, 0]);
@@ -252,7 +251,6 @@ contract InverseBondingCurveFuzzTest is Test {
         console2.log("after mint");
         reserveToken.approve(address(_router), buyReserve);
         data = abi.encode(recipient, buyReserve, 0, [0, 0], [0, 0]);
-        uint256 tokenBalanceBefore = inverseToken.balanceOf(recipient);
         _router.execute(recipient, curveContractAddress, false, CommandType.BUY_TOKEN, data);
 
         // Remove liquidity

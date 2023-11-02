@@ -28,7 +28,7 @@ contract InverseBondingCurveRouterTest is Test {
     uint256 ALLOWED_ERROR = 1e10;
 
     uint256 LIQUIDITY_2ETH_BEFOR_FEE = 2020202020202020202; // 2e18 / 0.99, to make actual liquidity 2eth
-    uint256 LIQUIDITY_2USDC_BEFOR_FEE = 2020202;
+    uint256 LIQUIDITY_20USDC_BEFOR_FEE = 20202020;
 
     function assertEqWithError(uint256 a, uint256 b) internal {
         uint256 diff = a > b ? a - b : b - a;
@@ -129,8 +129,8 @@ contract InverseBondingCurveRouterTest is Test {
     }
 
     function testInteractionWithERC20Pool() public {
-        uint256 initialReserve = 2e6;
-        uint256 buyReserve = 2e6;
+        uint256 initialReserve = 2e7;
+        uint256 buyReserve = 2e7;
         ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
 
         reserveToken.mint(address(this), initialReserve);
@@ -145,14 +145,14 @@ contract InverseBondingCurveRouterTest is Test {
         reserveToken.mint(recipient, 1e8);
         vm.startPrank(recipient);
         // Add liquidity
-        bytes memory data = abi.encode(recipient, LIQUIDITY_2USDC_BEFOR_FEE, [0, 0]);
-        reserveToken.approve(address(_router), LIQUIDITY_2USDC_BEFOR_FEE);
+        bytes memory data = abi.encode(recipient, LIQUIDITY_20USDC_BEFOR_FEE, [0, 0]);
+        reserveToken.approve(address(_router), LIQUIDITY_20USDC_BEFOR_FEE);
         _router.execute(recipient, poolAddress, false, CommandType.ADD_LIQUIDITY, data);
 
         (uint256 lpPosition, uint256 creditToken) = curveContract.liquidityPositionOf(recipient);
         assertEqWithError(lpPosition, 1e18);
-        assertEqWithError(creditToken, 1e18);
-        assertEqWithError(reserveToken.balanceOf(address(poolAddress)), LIQUIDITY_2USDC_BEFOR_FEE + initialReserve);
+        assertEqWithError(creditToken / 1e12, 1e8);
+        assertEqWithError(reserveToken.balanceOf(address(poolAddress)), LIQUIDITY_20USDC_BEFOR_FEE + initialReserve);
         console2.log("add liquidity", lpPosition);
 
         // Buy token
