@@ -5,5 +5,5 @@ output=$(forge create --private-key=$FOUNDRY_TEST_PRIVATE_KEY --rpc-url=$TENDERL
 #--verify --verifier etherscan
 echo "$output"
 router_address=$(echo "$output" | grep -o 'Deployed to: [^ ]*' | awk '{print $3}')
-export IBC_ROUTER_ADDRESS=$router_address
+export IBC_ROUTER_CONTRACT_ADDRESS=$router_address
 echo "Router address: $router_address"
