@@ -160,10 +160,11 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
     function addLiquidity(address recipient, uint256 reserveIn, uint256[2] memory priceLimits) external whenNotPaused {
         address sourceAccount = _getSourceAccount(recipient);
         if (_lpBalanceOf(recipient) > 0) revert LpAlreadyExist();
-
         if (recipient == address(0)) revert EmptyAddress();
-        if (!CurveLibrary.valueInRange(_currentPrice(), priceLimits)) {
-            revert PriceOutOfLimit(_currentPrice(), priceLimits);
+
+        uint256 currentPrice = _currentPrice();
+        if (!CurveLibrary.valueInRange(currentPrice, priceLimits)) {
+            revert PriceOutOfLimit(currentPrice, priceLimits);
         }
 
         _checkPayment(_reserveToken, CurveLibrary.scaleTo(_reserveBalance, _reserveTokenDecimal), reserveIn);
@@ -179,7 +180,7 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
         _createLpPosition(mintToken, inverseTokenCredit, recipient);
         _increaseReserve(reserveAdded);
         _updateInvariant(_virtualInverseTokenSupply());
-        _checkUtilizationNotChanged();
+        _checkUtilizationNotChanged(currentPrice);
 
         emit LiquidityAdded(sourceAccount, recipient, reserveIn, mintToken, _invariant);
     }
@@ -197,10 +198,11 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
 
         _checkPayment(_inverseToken, _inverseTokenBalance, inverseTokenIn);
         _inverseTokenBalance += inverseTokenIn;
+        uint256 currentPrice = _currentPrice();
 
         if (burnTokenAmount == 0) revert LpNotExist();
         if (recipient == address(0)) revert EmptyAddress();
-        if (!CurveLibrary.valueInRange(_currentPrice(), priceLimits)) revert PriceOutOfLimit(_currentPrice(), priceLimits);
+        if (!CurveLibrary.valueInRange(currentPrice, priceLimits)) revert PriceOutOfLimit(currentPrice, priceLimits);
 
         _updateLpReward(sourceAccount);
         uint256 inverseTokenCredit = _lpPositions[sourceAccount].inverseTokenCredit;
@@ -232,7 +234,7 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
         }
         _transferInverseToken(targetAccount, inverseTokenToUser);
 
-        _checkUtilizationNotChanged();
+        _checkUtilizationNotChanged(currentPrice);
         _transferReserveToken(targetAccount, reserveToUser);
     }
 
@@ -794,10 +796,11 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
 
     /**
      * @notice  Check whether utitlization parameter changed(value change percent within range)
+     * @param   currentPrice: Current inverse token price
      * @dev     Revert if changed
      */
-    function _checkUtilizationNotChanged() private view {
-        uint256 utilization = _currentPrice() * _virtualInverseTokenSupply() / _curveReserveBalance;
+    function _checkUtilizationNotChanged(uint256 currentPrice) private view {
+        uint256 utilization = currentPrice * _virtualInverseTokenSupply() / _curveReserveBalance;
         if (CurveLibrary.valueChanged(UTILIZATION, utilization, MAX_UTIL_CHANGE)) revert UtilizationChanged(utilization);
     }
 
