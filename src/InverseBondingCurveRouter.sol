@@ -149,5 +149,9 @@ contract InverseBondingCurveRouter {
         }
     }
 
-    receive() external payable {}
+    receive() external payable {
+        if(msg.sender != address(_weth)){
+            revert DepositNotAllowed();
+        }
+    }
 }

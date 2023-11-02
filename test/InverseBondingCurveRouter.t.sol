@@ -49,6 +49,11 @@ contract InverseBondingCurveRouterTest is Test {
         _factoryContract = InverseBondingCurveFactory(_adminContract.factoryAddress());
     }
 
+    function testRevertIfDepositToRouter() public {
+        vm.expectRevert();
+        payable(address(_router)).transfer(1 ether);
+    }
+
     function testInteractionWithETHPool() public {
         uint256 initialReserve = 2e18;
         uint256 buyReserve = 2e18;

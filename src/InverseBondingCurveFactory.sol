@@ -39,8 +39,8 @@ contract InverseBondingCurveFactory {
         address reserveFromAccount = msg.sender;
         uint8 tokenDecimals = 18;
         if (reserveTokenAddress == address(0) && msg.value > 0) {
-            if (msg.value < initialReserves) {
-                revert InsufficientBalance();
+            if (msg.value != initialReserves) {
+                revert InputBalanceNotMatch();
             }
             // Ignore reserve parameter passed in, use all msg.value as reserve
             initialReserves = msg.value;
@@ -86,15 +86,15 @@ contract InverseBondingCurveFactory {
         uint8 tokenDecimals,
         address recipient
     ) private {
-        address _cruveContract = _admin.curveImplementation();
+        address _curveContract = _admin.curveImplementation();
 
         InverseBondingCurveToken tokenContract =
-            new InverseBondingCurveToken(address(this), inverseTokenSymbol, inverseTokenSymbol);
+            new InverseBondingCurveToken(inverseTokenSymbol, inverseTokenSymbol);
 
-        address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _cruveContract, ""));
+        address proxyContract = address(new InverseBondingCurveProxy(address(_admin), _curveContract, ""));
         _curveMap[reserveTokenAddress] = proxyContract;
         curves.push(proxyContract);
-        emit CurveCreated(_cruveContract, address(tokenContract), proxyContract, CurveLibrary.scaleFrom(initialReserves, tokenDecimals));
+        emit CurveCreated(_curveContract, address(tokenContract), proxyContract, CurveLibrary.scaleFrom(initialReserves, tokenDecimals));
 
         // Initialize Curve contract
         IERC20(reserveTokenAddress).safeTransferFrom(reserveFromAccount, address(proxyContract), initialReserves);

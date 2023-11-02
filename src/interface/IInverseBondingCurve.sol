@@ -69,17 +69,19 @@ interface IInverseBondingCurve {
      * @notice  Emitted when token staked
      * @dev
      * @param   from : Staked from account
+     * @param   recipient : Account to stake for, the staked token holder will be changed to recipient
      * @param   amount : Staked token amount
      */
-    event TokenStaked(address indexed from, uint256 amount);
+    event TokenStaked(address indexed from, address indexed recipient, uint256 amount);
 
     /**
      * @notice  Emitted when token unstaked
      * @dev
      * @param   from : Unstaked from account
+     * @param   recipient : Account to receive the unstaked IBC token
      * @param   amount : Unstaked token amount
      */
-    event TokenUnstaked(address indexed from, uint256 amount);
+    event TokenUnstaked(address indexed from, address indexed recipient, uint256 amount);
 
     /**
      * @notice  Emitted when token bought by user
@@ -235,13 +237,13 @@ interface IInverseBondingCurve {
     function totalStaked() external view returns (uint256);
 
     /**
-     * @notice  Query EMA(exponential moving average) reward per block
+     * @notice  Query EMA(exponential moving average) reward per second
      * @dev
      * @param   rewardType : Reward type: LP or staking
-     * @return  inverseTokenReward : EMA IBC token reward per block
-     * @return  reserveReward : EMA reserve reward per block
+     * @return  inverseTokenReward : EMA IBC token reward per second
+     * @return  reserveReward : EMA reserve reward per second
      */
-    function blockRewardEMA(RewardType rewardType) external view returns (uint256 inverseTokenReward, uint256 reserveReward);
+    function rewardEMAPerSecond(RewardType rewardType) external view returns (uint256 inverseTokenReward, uint256 reserveReward);
 
     /**
      * @notice  Query fee state

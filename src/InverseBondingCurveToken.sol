@@ -8,8 +8,7 @@ import "openzeppelin/access/Ownable.sol";
 /// @author  Sammy
 /// @notice  ERC20 token contract of the pegging token, pool contract will mint and burn pegging token
 contract InverseBondingCurveToken is ERC20Burnable, Ownable {
-    constructor(address owner_, string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable() {
-        transferOwnership(owner_);
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) Ownable() {
     }
 
     function mint(address to, uint256 amount) public onlyOwner {
