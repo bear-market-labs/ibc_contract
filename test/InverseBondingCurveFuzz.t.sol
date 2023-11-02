@@ -60,7 +60,7 @@ contract InverseBondingCurveFuzzTest is Test {
 
         vm.deal(initializer, initialReserve * 2);
         vm.startPrank(initializer);
-        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0));
+        _factoryContract.createCurve{value: initialReserve}(initialReserve, address(0), initializer);
         vm.stopPrank();
 
         console2.log("after createCurve");
@@ -140,7 +140,7 @@ contract InverseBondingCurveFuzzTest is Test {
 
         vm.startPrank(initializer); 
         reserveToken.approve(address(_factoryContract), initialReserve);       
-        _factoryContract.createCurve(initialReserve, address(reserveToken));
+        _factoryContract.createCurve(initialReserve, address(reserveToken), initializer);
         vm.stopPrank();
 
         address curveContractAddress = _factoryContract.getCurve(address(reserveToken));
@@ -227,7 +227,7 @@ contract InverseBondingCurveFuzzTest is Test {
         
         vm.startPrank(initializer); 
         reserveToken.approve(address(_factoryContract), initialReserve);       
-        _factoryContract.createCurve(initialReserve, address(reserveToken));
+        _factoryContract.createCurve(initialReserve, address(reserveToken), initializer);
         vm.stopPrank();
 
         console2.log("after createCurve");
