@@ -3,11 +3,11 @@ pragma solidity ^0.8.18;
 
 import "openzeppelin/access/Ownable2Step.sol";
 import "openzeppelin/security/Pausable.sol";
-import "openzeppelin/utils/Create2.sol";
 import "./Constants.sol";
 import "./Enums.sol";
 
 import "./InverseBondingCurveFactory.sol";
+import "./InverseBondingCurve.sol";
 
 contract InverseBondingCurveAdmin is Ownable2Step, Pausable {
     address private _weth;
@@ -54,15 +54,20 @@ contract InverseBondingCurveAdmin is Ownable2Step, Pausable {
      */
     event FeeConfigChanged(ActionType actionType, uint256 lpFee, uint256 stakingFee, uint256 protocolFee);
 
-    constructor(address wethAddress, address routerAddress, address protocolFeeOwner, bytes memory curveContractCode) Ownable2Step() {
+    /**
+     * @notice  Constructor of Admin contract
+     * @dev
+     * @param   wethAddress : WrapETH contract address
+     * @param   routerAddress : Router contract address which handle the native asset wrap/unwrap
+     * @param   protocolFeeOwner : Protocol fee owner address
+     */
+    constructor(address wethAddress, address routerAddress, address protocolFeeOwner) Ownable2Step() {
         if (wethAddress == address(0) || routerAddress == address(0) || protocolFeeOwner == address(0)) revert EmptyAddress();
         _weth = wethAddress;
         _router = routerAddress;
         _protocolFeeOwner = protocolFeeOwner;
 
-        bytes32 salt = bytes32(uint256(uint160(msg.sender)) + block.number);
-
-        _curveImplementation = Create2.deploy(0, salt, abi.encodePacked(curveContractCode));
+        _curveImplementation = address(new InverseBondingCurve());
 
         _createFactory();
     }

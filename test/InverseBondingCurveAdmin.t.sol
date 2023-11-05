@@ -25,7 +25,7 @@ contract InverseBondingCurveAdminTest is Test {
 
     function setUp() public {
         _weth = new WethToken();
-        _adminContract = new InverseBondingCurveAdmin(address(_weth), router, feeOwner, type(InverseBondingCurve).creationCode);
+        _adminContract = new InverseBondingCurveAdmin(address(_weth), router, feeOwner);
     }
 
 
