@@ -20,12 +20,9 @@ else
     echo "Existing curve library address: "$library_address""
 fi
 echo "Deploying Admin Contract:"
-curve_bytecode=$(forge inspect src/InverseBondingCurve.sol:InverseBondingCurve --libraries src/CurveLibrary.sol:CurveLibrary:"$IBC_CURVE_LIBRARY_ADDRESS" bytecode)
-# curve_bytecode=$(jq -r '.bytecode.object' ./out/InverseBondingCurve.sol/InverseBondingCurve.json)
-# echo $curve_bytecode
 output=$(forge create --mnemonic="$mnemonic" --rpc-url=$rpc  src/InverseBondingCurveAdmin.sol:InverseBondingCurveAdmin \
     --libraries src/CurveLibrary.sol:CurveLibrary:"$IBC_CURVE_LIBRARY_ADDRESS" \
-    --constructor-args $WETH_ADDRESS $IBC_ROUTER_CONTRACT_ADDRESS $PROTOCOL_FEE_OWNER $curve_bytecode)
+    --constructor-args $WETH_ADDRESS $IBC_ROUTER_CONTRACT_ADDRESS $PROTOCOL_FEE_OWNER)
 
 echo "$output"
 admin_address=$(echo "$output" | grep -o 'Deployed to: [^ ]*' | awk '{print $3}')

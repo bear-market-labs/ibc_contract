@@ -44,7 +44,7 @@ contract InverseBondingCurveRouterTest is Test {
         _weth = new WethToken();
         _router = new InverseBondingCurveRouter(address(_weth));
         _adminContract =
-            new InverseBondingCurveAdmin(address(_weth), address(_router), feeOwner, type(InverseBondingCurve).creationCode);
+            new InverseBondingCurveAdmin(address(_weth), address(_router), feeOwner);
 
         _factoryContract = InverseBondingCurveFactory(_adminContract.factoryAddress());
     }

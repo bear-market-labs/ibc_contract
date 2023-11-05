@@ -23,7 +23,7 @@ contract InverseBondingCurveFactoryTest is Test {
 
     function setUp() public {
         _weth = new WethToken();
-        _adminContract = new InverseBondingCurveAdmin(address(_weth), owner, feeOwner, type(InverseBondingCurve).creationCode);
+        _adminContract = new InverseBondingCurveAdmin(address(_weth), owner, feeOwner);
 
         _factoryContract = InverseBondingCurveFactory(_adminContract.factoryAddress());
     }
