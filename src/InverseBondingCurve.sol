@@ -130,6 +130,7 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
         _checkPayment(_reserveToken, 0, reserve);
         reserve = CurveLibrary.scaleFrom(reserve, _reserveTokenDecimal);
         if (reserve < MIN_INPUT_AMOUNT) revert InputAmountTooSmall(reserve);
+        if (reserve > MAX_INPUT_AMOUNT) revert InputAmountTooLarge(reserve);
         _reserveBalance += reserve;
 
         _curveReserveBalance = reserve;
@@ -149,6 +150,8 @@ contract InverseBondingCurve is Initializable, IInverseBondingCurve {
         _createLpPosition(lpTokenAmount - lpToDead, supply - tokenToDead, recipient);
         // Burn some liquidity to dead address to avoid empty pool
         _createLpPosition(lpToDead, tokenToDead, DEAD_ADDRESS);
+
+        _checkUtilizationNotChanged(price);
 
         // emit FeeOwnerChanged(protocolFeeOwner);
         emit CurveInitialized(msg.sender, reserveTokenContract, _curveReserveBalance, supply, price, _invariant);
