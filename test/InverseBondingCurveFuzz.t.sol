@@ -128,8 +128,8 @@ contract InverseBondingCurveFuzzTest is Test {
 
     function testERC20CurveFuzz(uint256 initialReserve, uint256 additionalReserve, uint256 buyReserve) public {
         
-        initialReserve = bound(additionalReserve, 1e7, 1e15);
-        additionalReserve = bound(additionalReserve, 1e5, 1e15);
+        initialReserve = bound(additionalReserve, 1e7, 1e18);
+        additionalReserve = bound(additionalReserve, 1e5, 1e18);
         buyReserve = bound(buyReserve, 1e5, 1e10);
 
         ReserveToken reserveToken = new ReserveToken("USDC", "USDC", 6);
