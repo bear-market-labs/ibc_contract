@@ -7,3 +7,5 @@ echo "$output"
 router_address=$(echo "$output" | grep -o 'Deployed to: [^ ]*' | awk '{print $3}')
 export IBC_ROUTER_CONTRACT_ADDRESS=$router_address
 echo "Router address: $router_address"
+
+#run by deployer

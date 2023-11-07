@@ -1,8 +1,9 @@
+# run by deployer
 echo "Deploying Admin Contract:"
 mnemonic=$FOUNDRY_TEST_MNEMONIC
 rpc=$TENDERLY_RPC  
 export WETH_ADDRESS="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-export PROTOCOL_FEE_OWNER="0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+fee_owner=$PROTOCOL_FEE_OWNER #"0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 library_address=$IBC_CURVE_LIBRARY_ADDRESS #set to empty if we want redeploy
 if [ -z "$library_address" ]
 then
@@ -34,3 +35,16 @@ echo "Admin contract address: $IBC_ADMIN_CONTRACT_ADDRESS"
 echo "Admin contract owner address: $owner"
 echo "Admin contract fee owner address: $fee_owner"
 echo "Factory contract address: $IBC_FACTORY_CONTRACT_ADDRESS"
+
+echo "------------------------------------------"
+echo "Initiating ownership transfer to $OWNER"
+owner=$OWNER
+
+# two-stage transfer
+# 1. current owner designates pending owner
+cast send --mnemonic="$mnemonic" --rpc-url=$rpc $IBC_ADMIN_CONTRACT_ADDRESS "transferOwnership(address)" $owner
+
+# 2. pending owner claims ownership; can also do this thru a frontend + metamask + ledger
+#cast send --private-key="$OWNER_KEY" --rpc-url=$rpc $IBC_ADMIN_CONTRACT_ADDRESS "acceptOwnership()" 
+
+
