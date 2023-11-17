@@ -1,0 +1,1 @@
+forge script script/verifyContractInteraction.s.sol --rpc-url=$TENDERLY_RPC --broadcast
