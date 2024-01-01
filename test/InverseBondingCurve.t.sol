@@ -1365,7 +1365,7 @@ contract InverseBondingCurveTest is Test {
 
         for (uint256 i = 0; i < 1000; i++) {
             vm.roll(block.number + 100);
-            blockTimestamp += 1000;
+            blockTimestamp += 4000;
             vm.warp(blockTimestamp);
 
             tokenContract.transfer(address(curveContract), 1e16);
