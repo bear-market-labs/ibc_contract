@@ -1365,7 +1365,7 @@ contract InverseBondingCurveTest is Test {
 
         for (uint256 i = 0; i < 1000; i++) {
             vm.roll(block.number + 100);
-            blockTimestamp += 4000;
+            blockTimestamp += 1000;
             vm.warp(blockTimestamp);
 
             tokenContract.transfer(address(curveContract), 1e16);
@@ -1381,6 +1381,18 @@ contract InverseBondingCurveTest is Test {
 
         (inverseTokenReward, reserveReward) = curveContract.rewardEMAPerSecond(RewardType.STAKING);
         assertEqWithError(inverseTokenReward, uint256(1e11).divDown(1000e18));
+
+        // confirm proper handling for large time differences between ema updates
+        vm.roll(block.number + 100);
+        blockTimestamp += 3542401; // 41 days + 1 sec
+        vm.warp(blockTimestamp);
+
+        tokenContract.transfer(address(curveContract), 1e16);
+        {
+        uint256[2] memory priceRange = [uint256(0),uint256(0)];
+        uint256[2] memory reserveRange = [uint256(0),uint256(0)];
+            curveContract.sellTokens(recipient, 1e16, priceRange, reserveRange);
+        }
     }
 
     function testRevertIfAdminPause() public {
