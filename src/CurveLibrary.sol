@@ -182,7 +182,7 @@ library CurveLibrary {
      */
     function _calcParameterAlpha(FeeState storage feeState) private view returns (uint256 alpha) {
         int256 exponent = int256(((block.timestamp - feeState.emaRewardUpdateBlockTimestamp) * UINT_ONE).divDown(SECONDS_PER_DAY));
-        alpha = exponent >= LogExpMath.MAX_NATURAL_EXPONENT ? UINT_ONE : UINT_ONE - uint256(LogExpMath.exp(-exponent));
+        alpha = -exponent <= LogExpMath.MIN_NATURAL_EXPONENT ? UINT_ONE : UINT_ONE - uint256(LogExpMath.exp(-exponent));
     }
 
     /**
